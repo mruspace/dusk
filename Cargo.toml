@@ -1,0 +1,13 @@
+[package]
+name = "dusk"
+version = "0.1.0"
+edition = "2021"
+license = "Apache-2.0"
+description = "Monte Carlo of redundancy policies on hardware that only ever decays"
+publish = false
+
+[dependencies]
+
+[profile.release]
+lto = true
+codegen-units = 1

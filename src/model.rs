@@ -1,0 +1,324 @@
+//! The fault model and the three redundancy policies.
+//!
+//! A run has two halves. `History::generate` draws everything the universe
+//! does to the hardware: when each processor dies, when a salvaged spare
+//! becomes available, and which deaths take a neighbour with them. `simulate`
+//! then plays one policy against that history a day at a time. Every policy
+//! reads the same history and the same keyed upsets, so any difference between
+//! them is the policy and nothing else.
+
+use crate::rng::{keyed_unit, SplitMix64};
+
+pub const DAYS_PER_YEAR: f64 = 365.25;
+
+/// Salt for the self-check coverage draw, so it is independent of the upset
+/// draw for the same unit and day.
+const COVERAGE_SALT: u64 = 0xC0FF_EE00_DEAD_BEEF;
+
+#[derive(Clone, Debug)]
+pub struct Config {
+    pub horizon_years: f64,
+    /// Processors in service at launch.
+    pub nodes: usize,
+    /// Processors salvaged later from instruments that die around them.
+    pub spares: usize,
+    /// Weibull shape. Above 1 means wear-out: the hazard rises with age.
+    pub shape: f64,
+    /// Weibull scale, the age by which 63% of processors have died.
+    pub scale_years: f64,
+    /// Chance that a death also kills one other processor in service that
+    /// day. It can cascade.
+    pub p_corr: f64,
+    /// Chance, per processor per day, of a transient fault that corrupts that
+    /// day's result. This is what gets past EDAC and scrubbing, not the raw
+    /// bit-flip rate.
+    pub p_upset: f64,
+    /// Fraction of upsets a lone processor's self-check catches.
+    pub coverage: f64,
+    /// Useful output of a lone self-checking processor, as a fraction of a
+    /// voting set's. Running everything twice and comparing costs about half.
+    pub selfcheck_throughput: f64,
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            horizon_years: 1000.0,
+            nodes: 3,
+            spares: 0,
+            shape: 1.5,
+            scale_years: 125.0,
+            p_corr: 0.1,
+            p_upset: 1e-3,
+            coverage: 0.99,
+            selfcheck_throughput: 0.5,
+        }
+    }
+}
+
+impl Config {
+    pub fn horizon_days(&self) -> u64 {
+        (self.horizon_years * DAYS_PER_YEAR) as u64
+    }
+
+    fn lifetime_days(&self, rng: &mut SplitMix64) -> u64 {
+        // Inverse CDF. 1 - u is in (0, 1], so the log is finite.
+        let u = rng.next_f64();
+        let years = self.scale_years * (-(1.0 - u).ln()).powf(1.0 / self.shape);
+        (years * DAYS_PER_YEAR) as u64
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Unit {
+    /// First day in service.
+    pub joins: u64,
+    /// First day dead.
+    pub dies: u64,
+}
+
+impl Unit {
+    pub fn alive_on(&self, day: u64) -> bool {
+        self.joins <= day && day < self.dies
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct History {
+    pub seed: u64,
+    pub units: Vec<Unit>,
+}
+
+impl History {
+    pub fn generate(cfg: &Config, seed: u64) -> Self {
+        let mut rng = SplitMix64::new(seed);
+        let mut units = Vec::with_capacity(cfg.nodes + cfg.spares);
+        for _ in 0..cfg.nodes {
+            units.push(Unit { joins: 0, dies: cfg.lifetime_days(&mut rng) });
+        }
+        // A spare is the processor of an instrument that failed around it. It
+        // joins when the instrument dies, and it has been ageing in the same
+        // radiation since launch, so it can die before it is ever salvaged.
+        for _ in 0..cfg.spares {
+            let joins = cfg.lifetime_days(&mut rng);
+            let dies = cfg.lifetime_days(&mut rng);
+            units.push(Unit { joins, dies });
+        }
+        correlate(&mut units, cfg.p_corr, &mut rng);
+        Self { seed, units }
+    }
+}
+
+/// Walk deaths in time order. Each one, with probability `p`, kills one other
+/// processor that is in service that day. The victim's death is walked in turn,
+/// so cascades happen naturally.
+fn correlate(units: &mut [Unit], p: f64, rng: &mut SplitMix64) {
+    if p <= 0.0 {
+        return;
+    }
+    let mut walked = vec![false; units.len()];
+    while let Some(i) = (0..units.len()).filter(|&i| !walked[i]).min_by_key(|&i| units[i].dies) {
+        walked[i] = true;
+        let t = units[i].dies;
+        if rng.next_f64() >= p {
+            continue;
+        }
+        let victims: Vec<usize> = (0..units.len()).filter(|&j| !walked[j] && units[j].alive_on(t)).collect();
+        if !victims.is_empty() {
+            units[victims[rng.below(victims.len())]].dies = t;
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Policy {
+    /// Triple modular redundancy with a fixed majority. Replaces a dead member
+    /// from any spare, runs on as a pair once it cannot, and stops for good
+    /// when it drops below two: a lone processor cannot outvote anything.
+    FixedTmr,
+    /// One self-checking processor at a time, swapping in the next when it
+    /// dies. Lives as long as any hardware does but never votes.
+    StandbySimplex,
+    /// Mru's policy. Votes while three are alive, compares while two are, and
+    /// self-checks on one. The quorum shrinks with the hardware instead of
+    /// failing at a threshold.
+    ShrinkingQuorum,
+}
+
+impl Policy {
+    pub const ALL: [Policy; 3] = [Policy::FixedTmr, Policy::StandbySimplex, Policy::ShrinkingQuorum];
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Policy::FixedTmr => "fixed TMR",
+            Policy::StandbySimplex => "standby simplex",
+            Policy::ShrinkingQuorum => "shrinking quorum",
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Outcome {
+    /// Days of correct output, weighted by throughput.
+    pub useful_days: f64,
+    /// Days whose result was caught as bad and thrown away.
+    pub lost_days: u64,
+    /// Days that produced a wrong result nobody caught.
+    pub wrong_days: u64,
+    /// First day with no output possible, or the horizon.
+    pub end_day: u64,
+}
+
+impl Outcome {
+    pub fn useful_years(&self) -> f64 {
+        self.useful_days / DAYS_PER_YEAR
+    }
+
+    pub fn end_years(&self) -> f64 {
+        self.end_day as f64 / DAYS_PER_YEAR
+    }
+}
+
+enum Mode {
+    Vote,
+    Pair,
+    Single,
+}
+
+pub fn simulate(cfg: &Config, h: &History, policy: Policy) -> Outcome {
+    let mut out = Outcome::default();
+    let mut live = Vec::with_capacity(h.units.len());
+    let upset = |unit: usize, day: u64| keyed_unit(h.seed, unit as u64, day) < cfg.p_upset;
+
+    for day in 0..cfg.horizon_days() {
+        live.clear();
+        live.extend((0..h.units.len()).filter(|&i| h.units[i].alive_on(day)));
+        let k = live.len().min(3);
+
+        let mode = match (policy, k) {
+            (Policy::FixedTmr, 0 | 1) | (_, 0) => {
+                out.end_day = day;
+                return out;
+            }
+            (Policy::FixedTmr, 3) | (Policy::ShrinkingQuorum, 3) => Mode::Vote,
+            (Policy::FixedTmr, _) | (Policy::ShrinkingQuorum, 2) => Mode::Pair,
+            (Policy::StandbySimplex, _) | (Policy::ShrinkingQuorum, _) => Mode::Single,
+        };
+
+        // The lowest-numbered live processors do the work; the rest stand by.
+        match mode {
+            Mode::Vote => {
+                // One bad vote is outvoted. Two or more is treated as a split
+                // the voter catches, never as a wrong majority.
+                if live[..3].iter().filter(|&&u| upset(u, day)).count() <= 1 {
+                    out.useful_days += 1.0;
+                } else {
+                    out.lost_days += 1;
+                }
+            }
+            Mode::Pair => {
+                // A pair detects any disagreement but cannot say who is right.
+                if live[..2].iter().any(|&u| upset(u, day)) {
+                    out.lost_days += 1;
+                } else {
+                    out.useful_days += 1.0;
+                }
+            }
+            Mode::Single => {
+                let u = live[0];
+                if !upset(u, day) {
+                    out.useful_days += cfg.selfcheck_throughput;
+                } else if keyed_unit(h.seed ^ COVERAGE_SALT, u as u64, day) < cfg.coverage {
+                    out.lost_days += 1;
+                } else {
+                    out.wrong_days += 1;
+                }
+            }
+        }
+    }
+    out.end_day = cfg.horizon_days();
+    out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn quiet() -> Config {
+        Config { p_corr: 0.0, p_upset: 0.0, ..Config::default() }
+    }
+
+    fn fixed(deaths_years: &[u64]) -> History {
+        let d = DAYS_PER_YEAR as u64;
+        History { seed: 1, units: deaths_years.iter().map(|&y| Unit { joins: 0, dies: y * d }).collect() }
+    }
+
+    #[test]
+    fn fixed_tmr_stops_at_the_second_death() {
+        let h = fixed(&[10, 40, 90]);
+        let o = simulate(&quiet(), &h, Policy::FixedTmr);
+        assert_eq!(o.end_day, 40 * DAYS_PER_YEAR as u64);
+        assert_eq!(o.wrong_days, 0);
+    }
+
+    #[test]
+    fn shrinking_quorum_runs_to_the_last_death_at_reduced_rate() {
+        let h = fixed(&[10, 40, 90]);
+        let o = simulate(&quiet(), &h, Policy::ShrinkingQuorum);
+        let d = DAYS_PER_YEAR as u64;
+        assert_eq!(o.end_day, 90 * d);
+        // Full rate for 40 years, then half rate for 50.
+        assert_eq!(o.useful_days, (40 * d) as f64 + 0.5 * (50 * d) as f64);
+    }
+
+    #[test]
+    fn shrinking_quorum_never_does_less_than_fixed_tmr() {
+        let cfg = Config::default();
+        for s in 0..200 {
+            let h = History::generate(&cfg, s);
+            let a = simulate(&cfg, &h, Policy::FixedTmr);
+            let b = simulate(&cfg, &h, Policy::ShrinkingQuorum);
+            assert!(b.useful_days >= a.useful_days, "seed {s}");
+            assert!(b.end_day >= a.end_day, "seed {s}");
+        }
+    }
+
+    #[test]
+    fn a_vote_masks_single_upsets_and_a_loner_does_not() {
+        let cfg = Config { p_corr: 0.0, p_upset: 0.05, coverage: 0.0, ..Config::default() };
+        let h = fixed(&[500, 500, 500]);
+        let vote = simulate(&cfg, &h, Policy::ShrinkingQuorum);
+        let alone = simulate(&cfg, &h, Policy::StandbySimplex);
+        assert_eq!(vote.wrong_days, 0);
+        assert!(alone.wrong_days > 0);
+    }
+
+    #[test]
+    fn weibull_median_matches_the_formula() {
+        let cfg = Config::default();
+        let mut rng = SplitMix64::new(3);
+        let mut v: Vec<u64> = (0..50_000).map(|_| cfg.lifetime_days(&mut rng)).collect();
+        v.sort_unstable();
+        let median_years = v[v.len() / 2] as f64 / DAYS_PER_YEAR;
+        let expect = cfg.scale_years * std::f64::consts::LN_2.powf(1.0 / cfg.shape);
+        assert!((median_years - expect).abs() / expect < 0.02, "{median_years} vs {expect}");
+    }
+
+    #[test]
+    fn correlation_only_pulls_deaths_earlier() {
+        let mut cfg = Config::default();
+        cfg.p_corr = 0.0;
+        let base = History::generate(&cfg, 9);
+        cfg.p_corr = 1.0;
+        let corr = History::generate(&cfg, 9);
+        for (a, b) in base.units.iter().zip(&corr.units) {
+            assert!(b.dies <= a.dies);
+        }
+    }
+
+    #[test]
+    fn histories_are_reproducible() {
+        let cfg = Config { spares: 2, ..Config::default() };
+        assert_eq!(History::generate(&cfg, 42).units, History::generate(&cfg, 42).units);
+    }
+}
