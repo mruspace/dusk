@@ -97,7 +97,12 @@
 
     /* Home link: the orbit-M mark from mru.space. */
     .home { display: inline-flex; align-items: center; gap: .6rem; text-decoration: none; color: var(--ink-soft); font-family: var(--display); font-weight: 500; font-size: 1.05rem; }
-    .home svg { width: 34px; height: 34px; }
+    .home svg { width: 38px; height: 38px; display: none; }
+    /* The animated mark, as on mru.space. GIF has no alpha, so each theme's
+       art ships on a flat backdrop that the page blends away: the light art
+       sits on white and multiplies, the dark art sits on black and screens. */
+    .mark-anim, .mark-anim img { display: block; width: 52px; height: 52px; margin: -4px; }
+    .mark-anim img { mix-blend-mode: multiply; }
     .home .ring { fill: none; stroke: currentColor; stroke-width: 2.6; }
     .home .orbit { fill: none; stroke: currentColor; stroke-width: 1.6; }
     .home .mk { font-family: var(--display); font-weight: 500; font-size: 17px; fill: currentColor; }
@@ -178,13 +183,23 @@
     footer .sep { opacity: .5; padding: 0 .35rem; }
     footer .footnote { margin: .2rem 0 0; font-size: .85rem; }
 
-    @media (prefers-reduced-motion: reduce) { .tip { transition: none; } }
+    @media (prefers-color-scheme: dark) { .mark-anim img { mix-blend-mode: screen; } }
+    /* The static mark stays for anyone who asks for less motion. */
+    @media (prefers-reduced-motion: reduce) {
+      .tip { transition: none; }
+      .mark-anim { display: none; }
+      .home svg { display: block; }
+    }
   </style>
 </head>
 <body>
   <a class="skip" href="#main">Skip to content</a>
   <div class="wrap">
     <a class="home" href="https://mru.space/" aria-label="Mru home">
+      <picture class="mark-anim" aria-hidden="true">
+        <source srcset="mark-dark.gif" media="(prefers-color-scheme: dark)">
+        <img src="mark-light.gif" width="96" height="96" alt="" decoding="async">
+      </picture>
       <svg viewBox="0 0 100 100" aria-hidden="true">
         <circle class="ring" cx="50" cy="50" r="34"/>
         <ellipse class="orbit" cx="50" cy="50" rx="30" ry="14" transform="rotate(-22 50 50)"/>
