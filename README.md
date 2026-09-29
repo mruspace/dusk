@@ -1,3 +1,12 @@
+<p align="center">
+  <a href="https://mru.space">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://mru.space/assets/readme/mru-github-dark.gif">
+      <img src="https://mru.space/assets/readme/mru-github-light.gif" alt="Mru" width="120" height="120">
+    </picture>
+  </a>
+</p>
+
 # dusk
 
 A Monte Carlo of redundancy policies on hardware that only ever decays. Part of
