@@ -12,6 +12,8 @@ The Mru whitepaper proposes a **shrinking quorum** instead: vote while three
 processors are alive, compare while two are, and self-check on one. This
 program asks what that buys and what it costs, on the same simulated hardware.
 
+**Interactive version: [dusk.mru.space](https://dusk.mru.space)**
+
 ## Results
 
 <picture>
@@ -153,6 +155,10 @@ Results depend only on the seed, never on the thread count.
 The charts are plain SVG, written by `src/bin/charts.rs` from the same seeds as
 the tables above, in a light and a dark version styled after
 [mru.space](https://mru.space). Nothing is drawn by hand.
+
+The page at [dusk.mru.space](https://dusk.mru.space) is `docs/index.html`,
+served by GitHub Pages. It draws the same charts live from `docs/data.json`,
+which `charts` also writes, so the page and the README never disagree.
 
 ## The model
 
