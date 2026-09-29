@@ -12,14 +12,14 @@
 A Monte Carlo of redundancy policies on hardware that only ever decays. Part of
 [Mru](https://mru.space).
 
-Classic triple modular redundancy [[1]](#references)[[2]](#references) has a fixed threshold. Three processors vote,
+Classic triple modular redundancy [[1]](#references)[[2]](#references)[[3]](#references) has a fixed threshold. Three processors vote,
 two can still detect a disagreement, and one cannot outvote anything, so the
 system stops. On a mission with no repairs and no ground team in reach, that
 throws away the last processor's whole remaining life.
 
-The Mru whitepaper [[3]](#references) proposes a **shrinking quorum** instead: vote while
+The Mru whitepaper [[4]](#references) proposes a **shrinking quorum** instead: vote while
 three processors are alive, compare while two are, and self-check on one.
-Degrading from TMR to simplex is textbook [[4]](#references). The question here is what it
+Falling back from TMR to simplex is not new. The question here is what it
 is worth when no ground team can command it. This program asks what that buys
 and what it costs, on the same simulated hardware.
 
@@ -256,8 +256,8 @@ GitHub's "Cite this repository" button reads the same from `CITATION.cff`.
 
 1. R. E. Lyons and W. Vanderkulk, "The Use of Triple-Modular Redundancy to Improve Computer Reliability," *IBM Journal of Research and Development*, vol. 6, no. 2, pp. 200–209, 1962.
 2. J. von Neumann, "Probabilistic Logics and the Synthesis of Reliable Organisms from Unreliable Components," in *Automata Studies*, C. E. Shannon and J. McCarthy, Eds. Princeton University Press, 1956, pp. 43–98.
-3. W. Binns, "Mru: A Fault-Tolerant Operating System for Thousand-Year Autonomous Operation," 2026. [doi:10.5281/zenodo.20579438](https://doi.org/10.5281/zenodo.20579438)
-4. D. P. Siewiorek and R. S. Swarz, *Reliable Computer Systems: Design and Evaluation*, 3rd ed. A K Peters, 1998.
+3. D. P. Siewiorek and R. S. Swarz, *Reliable Computer Systems: Design and Evaluation*, 3rd ed. A K Peters, 1998.
+4. W. Binns, "Mru: A Fault-Tolerant Operating System for Thousand-Year Autonomous Operation," 2026. [doi:10.5281/zenodo.20579438](https://doi.org/10.5281/zenodo.20579438)
 5. NASA Jet Propulsion Laboratory, "NASA Turns Off 2 Voyager Science Instruments to Extend Mission," March 5, 2025. [jpl.nasa.gov](https://www.jpl.nasa.gov/news/nasa-turns-off-two-voyager-science-instruments-to-extend-mission/)
 6. P. C. Brandt, E. A. Provornikova, et al., "Interstellar Probe: Humanity's Exploration of the Galaxy Begins," *Acta Astronautica*, vol. 199, pp. 364–373, 2022. [doi:10.1016/j.actaastro.2022.07.011](https://doi.org/10.1016/j.actaastro.2022.07.011)
 7. M.-C. Hsueh, T. K. Tsai, and R. K. Iyer, "Fault Injection Techniques and Tools," *Computer*, vol. 30, no. 4, pp. 75–82, 1997.

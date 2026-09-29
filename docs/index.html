@@ -238,8 +238,8 @@
         <p class="byline">Will Binns &middot; September 2026 &middot; companion to the <a href="https://doi.org/10.5281/zenodo.20579438">Mru whitepaper</a></p>
       </header>
 
-      <p class="lede">Classic triple modular redundancy<sup class="cite"><a href="#ref-1">1</a>,<a href="#ref-2">2</a></sup> has a fixed threshold. Three processors vote, two can still detect a disagreement, and one cannot outvote anything, so the system stops. With no repairs and no ground team in reach, that throws away the last processor&rsquo;s whole remaining life.</p>
-      <p class="lede">The <a href="https://mru.space/mru-whitepaper.pdf">Mru whitepaper</a><sup class="cite"><a href="#ref-3">3</a></sup> proposes a <strong>shrinking quorum</strong> instead: vote while three processors are alive, compare while two are, and self-check on one. Degrading from TMR to simplex is textbook<sup class="cite"><a href="#ref-4">4</a></sup>. The question here is what it is worth when no ground team can command it. dusk simulates <span data-k="runs">10,000</span> missions and plays each policy against the same failing hardware.</p>
+      <p class="lede">Classic triple modular redundancy<sup class="cite"><a href="#ref-1">1</a>,<a href="#ref-2">2</a>,<a href="#ref-3">3</a></sup> has a fixed threshold. Three processors vote, two can still detect a disagreement, and one cannot outvote anything, so the system stops. With no repairs and no ground team in reach, that throws away the last processor&rsquo;s whole remaining life.</p>
+      <p class="lede">The <a href="https://mru.space/mru-whitepaper.pdf">Mru whitepaper</a><sup class="cite"><a href="#ref-4">4</a></sup> proposes a <strong>shrinking quorum</strong> instead: vote while three processors are alive, compare while two are, and self-check on one. Falling back from TMR to simplex is not new. The question here is what it is worth when no ground team can command it. dusk simulates <span data-k="runs">10,000</span> missions and plays each policy against the same failing hardware.</p>
 
       <div class="stats" aria-label="Headline results">
         <div class="stat">
@@ -297,7 +297,7 @@
       <div class="table-scroll"><table class="params">
         <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
         <tr><td>Processors at launch</td><td>3</td><td>the voting set</td></tr>
-        <tr><td>Lifetime</td><td>Weibull 1.5, 125 y</td><td>shape above 1 means wear-out<sup class="cite"><a href="#ref-8">8</a></sup>; median life about 98 years</td></tr>
+        <tr><td>Lifetime</td><td>Weibull<sup class="cite"><a href="#ref-8">8</a></sup> 1.5, 125 y</td><td>shape above 1 means wear-out; median life about 98 years</td></tr>
         <tr><td>Correlated deaths</td><td>0.1</td><td>chance a death also kills one other processor that day, which can cascade<sup class="cite"><a href="#ref-9">9</a></sup></td></tr>
         <tr><td>Upsets</td><td>1 in 1,000</td><td>per processor per day: a transient fault that gets past EDAC and corrupts that day&rsquo;s result</td></tr>
         <tr><td>Self-check coverage</td><td>99%</td><td>share of a lone processor&rsquo;s upsets it catches</td></tr>
@@ -362,8 +362,8 @@ cargo run --release -- --sweep   # sensitivity</code></pre>
       <ol class="refs">
         <li id="ref-1">R. E. Lyons and W. Vanderkulk, &ldquo;The Use of Triple-Modular Redundancy to Improve Computer Reliability,&rdquo; <i>IBM Journal of Research and Development</i>, vol. 6, no. 2, pp. 200&ndash;209, 1962.</li>
         <li id="ref-2">J. von Neumann, &ldquo;Probabilistic Logics and the Synthesis of Reliable Organisms from Unreliable Components,&rdquo; in <i>Automata Studies</i>, C. E. Shannon and J. McCarthy, Eds. Princeton University Press, 1956, pp. 43&ndash;98.</li>
-        <li id="ref-3">W. Binns, &ldquo;Mru: A Fault-Tolerant Operating System for Thousand-Year Autonomous Operation,&rdquo; 2026. <a href="https://doi.org/10.5281/zenodo.20579438">doi:10.5281/zenodo.20579438</a></li>
-        <li id="ref-4">D. P. Siewiorek and R. S. Swarz, <i>Reliable Computer Systems: Design and Evaluation</i>, 3rd ed. A K Peters, 1998.</li>
+        <li id="ref-3">D. P. Siewiorek and R. S. Swarz, <i>Reliable Computer Systems: Design and Evaluation</i>, 3rd ed. A K Peters, 1998.</li>
+        <li id="ref-4">W. Binns, &ldquo;Mru: A Fault-Tolerant Operating System for Thousand-Year Autonomous Operation,&rdquo; 2026. <a href="https://doi.org/10.5281/zenodo.20579438">doi:10.5281/zenodo.20579438</a></li>
         <li id="ref-5">NASA Jet Propulsion Laboratory, &ldquo;NASA Turns Off 2 Voyager Science Instruments to Extend Mission,&rdquo; March 5, 2025. <a href="https://www.jpl.nasa.gov/news/nasa-turns-off-two-voyager-science-instruments-to-extend-mission/">jpl.nasa.gov</a></li>
         <li id="ref-6">P. C. Brandt, E. A. Provornikova, et al., &ldquo;Interstellar Probe: Humanity&rsquo;s Exploration of the Galaxy Begins,&rdquo; <i>Acta Astronautica</i>, vol. 199, pp. 364&ndash;373, 2022. <a href="https://doi.org/10.1016/j.actaastro.2022.07.011">doi:10.1016/j.actaastro.2022.07.011</a></li>
         <li id="ref-7">M.-C. Hsueh, T. K. Tsai, and R. K. Iyer, &ldquo;Fault Injection Techniques and Tools,&rdquo; <i>Computer</i>, vol. 30, no. 4, pp. 75&ndash;82, 1997.</li>
