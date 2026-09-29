@@ -171,6 +171,26 @@
     td { font-family: var(--mono); font-size: .82rem; }
     td:first-child { font-family: var(--serif); font-size: .9rem; }
 
+    .byline { margin: .75rem 0 0; font-size: .95rem; color: var(--ink-faint); }
+    .byline a { color: var(--ink-soft); }
+    sup.cite { font-size: .68em; line-height: 0; margin-left: .08em; }
+    sup.cite a { color: var(--accent); text-decoration: none; }
+    sup.cite a:hover { text-decoration: underline; }
+    table.params td:last-child, table.params th:last-child { text-align: left; font-family: var(--serif); font-size: .9rem; }
+    table.params td:nth-child(2) { white-space: nowrap; }
+    /* On a phone, each parameter becomes a small block: name and default on
+       one line, the meaning under them. */
+    @media (max-width: 560px) {
+      table.params tr:first-child { display: none; }
+      table.params tr { display: block; padding: .6rem 0; border-bottom: 1px solid var(--rule); }
+      table.params td { display: inline; border: 0; padding: 0; }
+      table.params td:first-child { font-weight: 600; color: var(--ink); }
+      table.params td:nth-child(2) { margin-left: .45rem; }
+      table.params td:last-child { display: block; margin-top: .15rem; }
+    }
+    ol.refs { padding-left: 1.6rem; font-size: .92rem; line-height: 1.55; color: var(--ink-soft); }
+    ol.refs li { margin-bottom: .55rem; }
+    ol.refs li:target { color: var(--ink); }
     ul.plain { padding-left: 1.2rem; }
     ul.plain li { margin-bottom: .5rem; }
 
@@ -215,15 +235,16 @@
       <header>
         <h1>dusk</h1>
         <p class="tagline">What a shrinking quorum buys on hardware that only ever decays</p>
+        <p class="byline">Will Binns &middot; September 2026 &middot; companion to the <a href="https://doi.org/10.5281/zenodo.20579438">Mru whitepaper</a></p>
       </header>
 
-      <p class="lede">Classic triple modular redundancy has a fixed threshold. Three processors vote, two can still detect a disagreement, and one cannot outvote anything, so the system stops. With no repairs and no ground team in reach, that throws away the last processor&rsquo;s whole remaining life.</p>
-      <p class="lede">The <a href="https://mru.space/mru-whitepaper.pdf">Mru whitepaper</a> proposes a <strong>shrinking quorum</strong> instead: vote while three processors are alive, compare while two are, and self-check on one. dusk simulates <span data-k="runs">10,000</span> missions and plays each policy against the same failing hardware.</p>
+      <p class="lede">Classic triple modular redundancy<sup class="cite"><a href="#ref-1">1</a>,<a href="#ref-2">2</a></sup> has a fixed threshold. Three processors vote, two can still detect a disagreement, and one cannot outvote anything, so the system stops. With no repairs and no ground team in reach, that throws away the last processor&rsquo;s whole remaining life.</p>
+      <p class="lede">The <a href="https://mru.space/mru-whitepaper.pdf">Mru whitepaper</a><sup class="cite"><a href="#ref-3">3</a></sup> proposes a <strong>shrinking quorum</strong> instead: vote while three processors are alive, compare while two are, and self-check on one. Degrading from TMR to simplex is textbook<sup class="cite"><a href="#ref-4">4</a></sup>. The question here is what it is worth when no ground team can command it. dusk simulates <span data-k="runs">10,000</span> missions and plays each policy against the same failing hardware.</p>
 
       <div class="stats" aria-label="Headline results">
         <div class="stat">
           <div class="v" data-k="work">1.34x</div>
-          <div class="l">the useful work of fixed TMR</div>
+          <div class="l">the useful work of fixed TMR, with no ground team</div>
           <div class="ci" data-k="work-ci"></div>
         </div>
         <div class="stat">
@@ -233,7 +254,7 @@
         </div>
         <div class="stat">
           <div class="v" data-k="be">136 y</div>
-          <div class="l">of work one wrong result must cost before fixed TMR wins</div>
+          <div class="l">of useful work one wrong result must cost before fixed TMR comes out ahead</div>
           <div class="ci" data-k="be-ci"></div>
         </div>
       </div>
@@ -255,7 +276,7 @@
       <p>The shrinking quorum matches fixed TMR while three processors survive. It pulls ahead once TMR starts to stop and keeps working long after. It never does less on any single mission, because the two are identical until TMR stops. The cost is a few wrong results in the single-processor tail, which TMR never lives long enough to make.</p>
 
       <h2>When the ground can help</h2>
-      <p>Real spacecraft do not run TMR alone. When a string fails, a ground team diagnoses it and commands a fallback by hand. So the fair baseline is TMR plus a ground team that switches it to self-checking simplex, once it loses its majority, for as long as support lasts.</p>
+      <p>Real spacecraft do not run TMR alone. When a string fails, a ground team diagnoses it and commands a fallback by hand. Voyager, launched in 1977, still has that team: it now switches off instruments to live within a power supply that falls about 4 watts a year<sup class="cite"><a href="#ref-5">5</a></sup>. Interstellar Probe is designed to last at least 50 years<sup class="cite"><a href="#ref-6">6</a></sup>. So the fair baseline is TMR plus a ground team that switches it to self-checking simplex, once it loses its majority, for as long as support lasts.</p>
 
       <figure aria-labelledby="f2-t">
         <p class="fig-title" id="f2-t">What autonomy adds, by how long ground support lasts</p>
@@ -268,8 +289,23 @@
 
       <ul class="plain">
         <li><strong>Answer time barely matters.</strong> A fallback 1 day or 6 months after it is needed gives the same result to two decimals. The lost days are small next to decades of single-processor life.</li>
-        <li><strong>What matters is whether anyone is still there.</strong> If ground support never ends, autonomy adds nothing to throughput, because the ground does the same thing by hand. The whole gain comes from the years after support ends. At Voyager&rsquo;s <span data-k="voyager-years">49</span> years so far, it is still <span data-k="voyager">1.25x</span>.</li>
+        <li><strong>What matters is whether anyone is still there.</strong> If ground support never ends, autonomy adds nothing to throughput, because the ground does the same thing by hand. The whole gain comes from the years after support ends. With <span data-k="voyager-years">49</span> years of support (Voyager&rsquo;s so far) against a 98-year median hardware life, it is still <span data-k="voyager">1.25x</span>. The ratio of the two is what counts: shorter-lived hardware moves the curve left.</li>
       </ul>
+
+      <h2>The model</h2>
+      <p>Each mission is a day-by-day fault-injection run<sup class="cite"><a href="#ref-7">7</a></sup>. Every policy plays against the same fault history and the same upsets, so any difference between policies is the policy.</p>
+      <div class="table-scroll"><table class="params">
+        <tr><th>Parameter</th><th>Default</th><th>Meaning</th></tr>
+        <tr><td>Processors at launch</td><td>3</td><td>the voting set</td></tr>
+        <tr><td>Lifetime</td><td>Weibull 1.5, 125 y</td><td>shape above 1 means wear-out<sup class="cite"><a href="#ref-8">8</a></sup>; median life about 98 years</td></tr>
+        <tr><td>Correlated deaths</td><td>0.1</td><td>chance a death also kills one other processor that day, which can cascade<sup class="cite"><a href="#ref-9">9</a></sup></td></tr>
+        <tr><td>Upsets</td><td>1 in 1,000</td><td>per processor per day: a transient fault that gets past EDAC and corrupts that day&rsquo;s result</td></tr>
+        <tr><td>Self-check coverage</td><td>99%</td><td>share of a lone processor&rsquo;s upsets it catches</td></tr>
+        <tr><td>Self-check throughput</td><td>50%</td><td>a lone processor checks itself by doing the work twice</td></tr>
+        <tr><td>Salvaged spares</td><td>0</td><td>processors reclaimed from dead instruments</td></tr>
+        <tr><td>Horizon</td><td>1,000 y</td><td>every run ends well before it</td></tr>
+      </table></div>
+      <p><strong>Useful work</strong> is days of correct output, weighted by throughput and summed over the whole mission: the accomplishment measure performability analysis uses for systems that degrade<sup class="cite"><a href="#ref-10">10</a></sup>. A <strong>wrong result</strong> is a day of output nobody knew was bad. Intervals are 95% paired bootstrap intervals over whole missions<sup class="cite"><a href="#ref-11">11</a></sup>. Curves are monotone cubics, which cannot overshoot the data<sup class="cite"><a href="#ref-12">12</a></sup>.</p>
 
       <h2>How much the result depends on the assumptions</h2>
       <p>The parameters are plausible orders of magnitude, not values fitted to flight data. So each one the model cannot pin down is varied on its own, with the rest at default, over <span data-k="sweep-runs">10,000</span> missions per value.</p>
@@ -312,6 +348,31 @@ cargo run --release -- --sweep   # sensitivity</code></pre>
         <a class="btn btn-primary" href="https://github.com/mruspace/dusk">Code</a>
         <a class="btn" href="https://mru.space/mru-whitepaper.pdf">Paper</a>
       </div>
+
+      <h2>Cite this</h2>
+<pre><code>@software{binns2026dusk,
+  author = {Binns, Will},
+  title  = {dusk: A Monte Carlo of Redundancy Policies on Hardware That Only Ever Decays},
+  year   = {2026},
+  url    = {https://github.com/mruspace/dusk},
+  note   = {Results at https://dusk.mru.space}
+}</code></pre>
+
+      <h2 id="references">References</h2>
+      <ol class="refs">
+        <li id="ref-1">R. E. Lyons and W. Vanderkulk, &ldquo;The Use of Triple-Modular Redundancy to Improve Computer Reliability,&rdquo; <i>IBM Journal of Research and Development</i>, vol. 6, no. 2, pp. 200&ndash;209, 1962.</li>
+        <li id="ref-2">J. von Neumann, &ldquo;Probabilistic Logics and the Synthesis of Reliable Organisms from Unreliable Components,&rdquo; in <i>Automata Studies</i>, C. E. Shannon and J. McCarthy, Eds. Princeton University Press, 1956, pp. 43&ndash;98.</li>
+        <li id="ref-3">W. Binns, &ldquo;Mru: A Fault-Tolerant Operating System for Thousand-Year Autonomous Operation,&rdquo; 2026. <a href="https://doi.org/10.5281/zenodo.20579438">doi:10.5281/zenodo.20579438</a></li>
+        <li id="ref-4">D. P. Siewiorek and R. S. Swarz, <i>Reliable Computer Systems: Design and Evaluation</i>, 3rd ed. A K Peters, 1998.</li>
+        <li id="ref-5">NASA Jet Propulsion Laboratory, &ldquo;NASA Turns Off 2 Voyager Science Instruments to Extend Mission,&rdquo; March 5, 2025. <a href="https://www.jpl.nasa.gov/news/nasa-turns-off-two-voyager-science-instruments-to-extend-mission/">jpl.nasa.gov</a></li>
+        <li id="ref-6">P. C. Brandt, E. A. Provornikova, et al., &ldquo;Interstellar Probe: Humanity&rsquo;s Exploration of the Galaxy Begins,&rdquo; <i>Acta Astronautica</i>, vol. 199, pp. 364&ndash;373, 2022. <a href="https://doi.org/10.1016/j.actaastro.2022.07.011">doi:10.1016/j.actaastro.2022.07.011</a></li>
+        <li id="ref-7">M.-C. Hsueh, T. K. Tsai, and R. K. Iyer, &ldquo;Fault Injection Techniques and Tools,&rdquo; <i>Computer</i>, vol. 30, no. 4, pp. 75&ndash;82, 1997.</li>
+        <li id="ref-8">W. Weibull, &ldquo;A Statistical Distribution Function of Wide Applicability,&rdquo; <i>Journal of Applied Mechanics</i>, vol. 18, no. 3, pp. 293&ndash;297, 1951.</li>
+        <li id="ref-9">A. Avi&zcaron;ienis, J.-C. Laprie, B. Randell, and C. Landwehr, &ldquo;Basic Concepts and Taxonomy of Dependable and Secure Computing,&rdquo; <i>IEEE Transactions on Dependable and Secure Computing</i>, vol. 1, no. 1, pp. 11&ndash;33, 2004.</li>
+        <li id="ref-10">J. F. Meyer, &ldquo;On Evaluating the Performability of Degradable Computing Systems,&rdquo; <i>IEEE Transactions on Computers</i>, vol. C-29, no. 8, pp. 720&ndash;731, 1980.</li>
+        <li id="ref-11">B. Efron, &ldquo;Bootstrap Methods: Another Look at the Jackknife,&rdquo; <i>The Annals of Statistics</i>, vol. 7, no. 1, pp. 1&ndash;26, 1979. <a href="https://doi.org/10.1214/aos/1176344552">doi:10.1214/aos/1176344552</a></li>
+        <li id="ref-12">F. N. Fritsch and R. E. Carlson, &ldquo;Monotone Piecewise Cubic Interpolation,&rdquo; <i>SIAM Journal on Numerical Analysis</i>, vol. 17, no. 2, pp. 238&ndash;246, 1980. <a href="https://doi.org/10.1137/0717021">doi:10.1137/0717021</a></li>
+      </ol>
     </main>
 
     <footer>

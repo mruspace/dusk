@@ -1,0 +1,25 @@
+cff-version: 1.2.0
+message: "If you use dusk, please cite it as below."
+title: "dusk: A Monte Carlo of Redundancy Policies on Hardware That Only Ever Decays"
+type: software
+authors:
+  - family-names: Binns
+    given-names: Will
+license: Apache-2.0
+repository-code: "https://github.com/mruspace/dusk"
+url: "https://dusk.mru.space"
+date-released: 2026-09-29
+keywords:
+  - fault tolerance
+  - triple modular redundancy
+  - graceful degradation
+  - flight software
+  - Monte Carlo
+references:
+  - type: article
+    title: "Mru: A Fault-Tolerant Operating System for Thousand-Year Autonomous Operation"
+    authors:
+      - family-names: Binns
+        given-names: Will
+    year: 2026
+    doi: 10.5281/zenodo.20579438
