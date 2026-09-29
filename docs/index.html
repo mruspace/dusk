@@ -289,7 +289,7 @@
 
       <ul class="plain">
         <li><strong>Answer time barely matters.</strong> A fallback 1 day or 6 months after it is needed gives the same result to two decimals. The lost days are small next to decades of single-processor life.</li>
-        <li><strong>What matters is whether anyone is still there.</strong> If ground support never ends, autonomy adds nothing to throughput, because the ground does the same thing by hand. The whole gain comes from the years after support ends. With <span data-k="voyager-years">49</span> years of support (Voyager&rsquo;s so far) against a 98-year median hardware life, it is still <span data-k="voyager">1.25x</span>. The ratio of the two is what counts: shorter-lived hardware moves the curve left.</li>
+        <li><strong>What matters is whether anyone is still there.</strong> If ground support never ends, autonomy adds nothing to throughput, because the ground does the same thing by hand. The whole gain comes from the years after support ends. With <span data-k="voyager-years">49</span> years of support (Voyager&rsquo;s so far) against a 98-year median hardware life, it is still <span data-k="voyager">1.25x</span>. The ratio of the two is what counts: shorter-lived hardware moves the curve left. With a 60-year Weibull scale, 50 years of support leaves 1.10x instead of 1.25x.</li>
       </ul>
 
       <h2>The model</h2>
@@ -305,7 +305,7 @@
         <tr><td>Salvaged spares</td><td>0</td><td>processors reclaimed from dead instruments</td></tr>
         <tr><td>Horizon</td><td>1,000 y</td><td>every run ends well before it</td></tr>
       </table></div>
-      <p><strong>Useful work</strong> is days of correct output, weighted by throughput and summed over the whole mission: the accomplishment measure performability analysis uses for systems that degrade<sup class="cite"><a href="#ref-10">10</a></sup>. A <strong>wrong result</strong> is a day of output nobody knew was bad. Intervals are 95% paired bootstrap intervals over whole missions<sup class="cite"><a href="#ref-11">11</a></sup>. Curves are monotone cubics, which cannot overshoot the data<sup class="cite"><a href="#ref-12">12</a></sup>.</p>
+      <p><strong>Useful work</strong> is days of correct output, weighted by throughput and summed over the whole mission: the accomplishment measure performability analysis uses for systems that degrade<sup class="cite"><a href="#ref-10">10</a></sup>. A <strong>wrong result</strong> (an undetected error) is a day of output nobody knew was bad. Intervals are 95% paired bootstrap intervals over whole missions<sup class="cite"><a href="#ref-11">11</a></sup>. Curves are monotone cubics, which cannot overshoot the data<sup class="cite"><a href="#ref-12">12</a></sup>.</p>
 
       <h2>How much the result depends on the assumptions</h2>
       <p>The parameters are plausible orders of magnitude, not values fitted to flight data. So each one the model cannot pin down is varied on its own, with the rest at default, over <span data-k="sweep-runs">10,000</span> missions per value.</p>
@@ -343,6 +343,7 @@
 cd dusk
 cargo run --release              # the default scenario
 cargo run --release -- --ground  # against TMR with a ground team
+cargo run --release -- --ground --scale-years 60  # shorter-lived hardware
 cargo run --release -- --sweep   # sensitivity</code></pre>
       <div class="cta-row">
         <a class="btn btn-primary" href="https://github.com/mruspace/dusk">Code</a>

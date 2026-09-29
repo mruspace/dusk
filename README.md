@@ -93,12 +93,14 @@ never                      1.00x     1.00x     1.00x   1.00x to 1.00x
   to decades of single-processor life.
 - **What matters is whether anyone is still there.** With ground support that
   never ends, autonomy adds nothing to throughput: the ground does the same
-  thing by hand. The whole gain comes from the years after support ends. At
-  Voyager's 49 years so far, it is still 1.25x.
+  thing by hand. The whole gain comes from the years after support ends. With
+  49 years of support (Voyager's so far) against a 98-year median hardware
+  life, it is still 1.25x.
 
 These years are relative to the hardware: with a 125-year Weibull scale, the
 median processor lives about 98 years. Shorter-lived hardware moves the curve
-left.
+left: with `--scale-years 60`, 50 years of support leaves a gain of 1.10x
+instead of 1.25x.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/sensitivity-dark.svg">
@@ -155,6 +157,7 @@ cargo run --release                 # the default scenario
 cargo run --release -- --spares 2   # add salvaged processors
 cargo run --release -- --sweep      # sensitivity across uncertain parameters
 cargo run --release -- --ground     # against TMR with a ground team
+cargo run --release -- --ground --scale-years 60  # the same, shorter-lived hardware
 cargo run --release -- --help       # every option
 cargo run --release --bin charts    # redraw the charts in docs/
 cargo test --release
@@ -207,7 +210,7 @@ idles until the ground's command arrives and then self-checks. If support has
 already ended when TMR loses its majority, no command comes and it stops.
 
 A self-checking processor catches a fraction `coverage` of its upsets and loses
-those days. The rest become **wrong results**: output nobody knew was bad. It
+those days. The rest become **wrong results** (undetected errors): output nobody knew was bad. It
 also runs at `selfcheck_throughput` of full rate, because checking yourself
 means doing the work twice.
 
