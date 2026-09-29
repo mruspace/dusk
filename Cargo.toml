@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2021"
 license = "Apache-2.0"
 description = "Monte Carlo of redundancy policies on hardware that only ever decays"
+repository = "https://github.com/mruspace/dusk"
+homepage = "https://mru.space"
 publish = false
 
 [dependencies]

@@ -166,6 +166,12 @@ Other simplifications:
   shrinking quorum is to make that fallback autonomous, with defined
   behaviour and a measured cost, for missions where the ground cannot help.
 
+## Questions or contributions
+
+Issues and PRs aren't open to the public on this repo, but we'd love to hear from
+you — say hi on X at [@mruspace](https://x.com/mruspace) or email
+[contact@mru.space](mailto:contact@mru.space).
+
 ## Licence
 
 Code under [Apache License 2.0](./LICENSE). The **Mru** name and mark are
