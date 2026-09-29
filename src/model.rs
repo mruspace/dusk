@@ -143,6 +143,12 @@ pub enum Policy {
     /// self-checks on one. The quorum shrinks with the hardware instead of
     /// failing at a threshold.
     ShrinkingQuorum,
+    /// Fixed TMR with a ground team behind it. When TMR drops to one
+    /// processor, the ground notices and commands it into self-checking simplex
+    /// `latency_days` later, provided the ground is still there: support ends
+    /// on day `ground_days`, and after that TMR stops as it would alone. This
+    /// is what real missions do, and the baseline autonomy must beat.
+    GroundFallback { latency_days: u64, ground_days: u64 },
 }
 
 impl Policy {
@@ -153,6 +159,7 @@ impl Policy {
             Policy::FixedTmr => "fixed TMR",
             Policy::StandbySimplex => "standby simplex",
             Policy::ShrinkingQuorum => "shrinking quorum",
+            Policy::GroundFallback { .. } => "TMR + ground fallback",
         }
     }
 }
@@ -183,6 +190,8 @@ enum Mode {
     Vote,
     Pair,
     Single,
+    /// Alive but waiting for the ground: no output, no end.
+    Idle,
 }
 
 pub fn simulate(cfg: &Config, h: &History, policy: Policy) -> Outcome {
@@ -195,20 +204,35 @@ pub fn simulate_traced(cfg: &Config, h: &History, policy: Policy, mut credit: im
     let mut out = Outcome::default();
     let mut live = Vec::with_capacity(h.units.len());
     let upset = |unit: usize, day: u64| keyed_unit(h.seed, unit as u64, day) < cfg.p_upset;
+    let mut fallback_at: Option<u64> = None;
 
     for day in 0..cfg.horizon_days() {
         live.clear();
         live.extend((0..h.units.len()).filter(|&i| h.units[i].alive_on(day)));
         let k = live.len().min(3);
 
+        let voting = |k: usize| if k == 3 { Mode::Vote } else { Mode::Pair };
         let mode = match (policy, k) {
-            (Policy::FixedTmr, 0 | 1) | (_, 0) => {
-                out.end_day = day;
-                return out;
+            (_, 0) | (Policy::FixedTmr, 1) => None,
+            (Policy::StandbySimplex, _) | (Policy::ShrinkingQuorum, 1) => Some(Mode::Single),
+            (Policy::GroundFallback { latency_days, ground_days }, 1) => {
+                // The command is sent once, when TMR first loses its majority.
+                let at = *fallback_at.get_or_insert(if day < ground_days {
+                    day.saturating_add(latency_days)
+                } else {
+                    u64::MAX
+                });
+                match at {
+                    u64::MAX => None,
+                    at if day < at => Some(Mode::Idle),
+                    _ => Some(Mode::Single),
+                }
             }
-            (Policy::FixedTmr, 3) | (Policy::ShrinkingQuorum, 3) => Mode::Vote,
-            (Policy::FixedTmr, _) | (Policy::ShrinkingQuorum, 2) => Mode::Pair,
-            (Policy::StandbySimplex, _) | (Policy::ShrinkingQuorum, _) => Mode::Single,
+            (_, k) => Some(voting(k)),
+        };
+        let Some(mode) = mode else {
+            out.end_day = day;
+            return out;
         };
 
         // The lowest-numbered live processors do the work; the rest stand by.
@@ -243,6 +267,7 @@ pub fn simulate_traced(cfg: &Config, h: &History, policy: Policy, mut credit: im
                     out.wrong_days += 1;
                 }
             }
+            Mode::Idle => {}
         }
     }
     out.end_day = cfg.horizon_days();
@@ -300,6 +325,31 @@ mod tests {
         let alone = simulate(&cfg, &h, Policy::StandbySimplex);
         assert_eq!(vote.wrong_days, 0);
         assert!(alone.wrong_days > 0);
+    }
+
+    #[test]
+    fn ground_fallback_spans_fixed_tmr_to_shrinking_quorum() {
+        let cfg = Config::default();
+        let never = Policy::GroundFallback { latency_days: 30, ground_days: 0 };
+        let instant = Policy::GroundFallback { latency_days: 0, ground_days: u64::MAX };
+        for s in 0..100 {
+            let h = History::generate(&cfg, s);
+            assert_eq!(simulate(&cfg, &h, never), simulate(&cfg, &h, Policy::FixedTmr), "seed {s}");
+            assert_eq!(simulate(&cfg, &h, instant), simulate(&cfg, &h, Policy::ShrinkingQuorum), "seed {s}");
+        }
+    }
+
+    #[test]
+    fn ground_fallback_waits_out_the_latency() {
+        let d = DAYS_PER_YEAR as u64;
+        let h = fixed(&[10, 40, 90]);
+        let p = Policy::GroundFallback { latency_days: 100, ground_days: u64::MAX };
+        let o = simulate(&quiet(), &h, p);
+        assert_eq!(o.end_day, 90 * d);
+        assert_eq!(o.useful_days, (40 * d) as f64 + 0.5 * (50 * d - 100) as f64);
+        // Support that ended before TMR lost its majority cannot help.
+        let gone = Policy::GroundFallback { latency_days: 1, ground_days: 39 * d };
+        assert_eq!(simulate(&quiet(), &h, gone).end_day, 40 * d);
     }
 
     #[test]

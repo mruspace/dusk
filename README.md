@@ -32,17 +32,59 @@ fixed TMR             99.2     37.0     92.3    170.2         99.3        0.000
 standby simplex       82.4     38.7     77.4    132.5        165.0        0.586
 shrinking quorum     132.0     63.5    126.2    207.4        165.0        0.236
 
-shrinking quorum vs fixed TMR: 1.33x the useful work in total; per mission median 1.26x (p10 1.00x, p90 2.33x)
-shrinking quorum vs standby simplex: 160% of the useful work, 40% of the wrong results
+shrinking quorum vs fixed TMR: 1.33x the useful work in total (95% CI 1.31x to 1.35x); per mission median 1.26x (p10 1.00x, p90 2.33x)
+shrinking quorum vs standby simplex: 160% of the useful work, 40% of the wrong results (95% CI 37% to 43%)
+break-even: fixed TMR comes out ahead only if one wrong result costs more than 139 years of useful work (95% CI 128 to 152)
 ```
 
-- **Against fixed TMR:** 1.33x the useful work. Never less on any single
-  mission, because the two policies are identical until TMR stops. The cost is
-  a small number of wrong results in the single-processor tail, which TMR never
-  lives long enough to produce.
+- **Against fixed TMR:** 1.33x the useful work (95% CI 1.31x to 1.35x). Never
+  less on any single mission, because the two policies are identical until TMR
+  stops. The cost is a small number of wrong results in the single-processor
+  tail, which TMR never lives long enough to produce.
+- **The price of those wrong results:** TMR comes out ahead only if one wrong
+  result costs more than **139 years** of useful work (95% CI 128 to 152).
 - **Against standby simplex:** the same service life, 1.6x the useful work, and
-  60% fewer wrong results, because it votes for as long as it has hardware to
-  vote with.
+  60% fewer wrong results (95% CI 57% to 63%), because it votes for as long as
+  it has hardware to vote with.
+
+Intervals are from a paired bootstrap: 2,000 resamples of whole missions.
+
+### When the ground can help
+
+Real spacecraft do not run TMR alone. When a string fails, a ground team
+diagnoses it and commands a fallback by hand. `--ground` adds that baseline:
+TMR that, once it loses its majority, is switched to self-checking simplex by
+the ground after some delay, as long as ground support still exists.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/ground-dark.svg">
+  <img src="docs/ground-light.svg" alt="The shrinking quorum's useful work relative to TMR with a ground-commanded fallback, by years of ground support. 1.33x with no ground team, 1.24x at Voyager's 49 years, falling to 1.00x as support lasts past about 200 years." width="760">
+</picture>
+
+```
+2000 missions, seed 1; shrinking quorum's useful work vs TMR + ground fallback
+
+ground support ends        1 day   30 days  180 days   95% CI at 30 days
+at launch                  1.33x     1.33x     1.33x   1.31x to 1.35x
+after 10 years             1.33x     1.33x     1.33x   1.31x to 1.34x
+after 25 years             1.31x     1.31x     1.31x   1.29x to 1.33x
+after 50 years             1.24x     1.24x     1.24x   1.22x to 1.25x
+after 100 years            1.11x     1.11x     1.11x   1.10x to 1.11x
+after 200 years            1.01x     1.01x     1.01x   1.01x to 1.01x
+never                      1.00x     1.00x     1.00x   1.00x to 1.00x
+```
+
+- **Answer time barely matters.** A fallback 1 day or 6 months after it is
+  needed gives the same result to two decimals. The lost days are small next
+  to decades of single-processor life.
+- **What matters is whether anyone is still there.** With ground support that
+  never ends, autonomy adds nothing to throughput: the ground does the same
+  thing by hand. The whole gain comes from the years after support ends. At
+  Voyager's 49 years so far, it is still 1.24x.
+
+These years are relative to the hardware: with a 125-year Weibull scale, the
+median processor lives about 98 years. Shorter-lived hardware moves the curve
+left.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/sensitivity-dark.svg">
@@ -98,12 +140,14 @@ At `p_upset 1e-5` there is about one wrong result in 1,000 missions, so the
 cargo run --release                 # the default scenario
 cargo run --release -- --spares 2   # add salvaged processors
 cargo run --release -- --sweep      # sensitivity across uncertain parameters
+cargo run --release -- --ground     # against TMR with a ground team
 cargo run --release -- --help       # every option
 cargo run --release --bin charts    # redraw the charts in docs/
 cargo test --release
 ```
 
-No dependencies. The default run takes under a second, the sweep a few seconds.
+No dependencies. The default run takes under a second; the sweep and the
+ground table a few seconds each.
 Results depend only on the seed, never on the thread count.
 
 The charts are plain SVG, written by `src/bin/charts.rs` from the same seeds as
@@ -137,6 +181,10 @@ rarer than the raw bit-flip rate, and it is the number that matters here.
 | 2 | compare, loses the day on any upset | one self-checks | compare, loses the day on any upset |
 | 1 | **stops for good** | self-checks | self-checks |
 
+TMR + ground fallback behaves like fixed TMR, except that on one processor it
+idles until the ground's command arrives and then self-checks. If support has
+already ended when TMR loses its majority, no command comes and it stops.
+
 A self-checking processor catches a fraction `coverage` of its upsets and loses
 those days. The rest become **wrong results**: output nobody knew was bad. It
 also runs at `selfcheck_throughput` of full rate, because checking yourself
@@ -161,10 +209,9 @@ Other simplifications:
   policy equally.
 - Power, thermal limits, and duty cycling are not modelled. Every processor
   runs every day.
-- Fixed TMR stopping at one processor is the textbook policy. Real spacecraft
-  often have a ground-commanded fallback to one string. The point of the
-  shrinking quorum is to make that fallback autonomous, with defined
-  behaviour and a measured cost, for missions where the ground cannot help.
+- The ground team in `--ground` is perfect: it always diagnoses correctly and
+  its command always works. Real anomaly response is slower and less certain,
+  so this baseline flatters the ground.
 
 ## Questions or contributions
 

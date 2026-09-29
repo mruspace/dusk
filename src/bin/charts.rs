@@ -7,7 +7,7 @@
 //! seeds as `dusk` and `dusk --sweep`, so they match the README tables.
 
 use dusk::model::Config;
-use dusk::{run_all, sweeps, timeline, Totals};
+use dusk::{break_even_years, bootstrap, ground_curve, run_all, sweeps, timeline, work_ratio, GroundPoint, Totals};
 use std::fmt::Write as _;
 use std::path::Path;
 
@@ -205,6 +205,157 @@ struct Row {
     values: String,
     work: (f64, f64),
     wrong: (f64, f64),
+    /// Each value tried, with its work ratio and wrong-result share.
+    points: Vec<(String, f64, Option<f64>)>,
+}
+
+/// Voyager 1 and 2 launched in 1977; this is how long their ground support
+/// has lasted so far, the longest of any deep-space mission.
+const VOYAGER_YEARS: f64 = 49.0;
+const GROUND_LATENCY_DAYS: u64 = 30;
+
+// ---------------------------------------------------------------- ground
+
+fn ground_chart(t: &Theme, pts: &[GroundPoint]) -> String {
+    let (w, h) = (760.0, 400.0);
+    let (x0, x1, y0, y1) = (52.0, 736.0, 104.0, 352.0);
+    let max_years = pts.last().unwrap().ground_years;
+    let (lo, hi) = (1.0, 1.4);
+    let sx = |g: f64| x0 + (x1 - x0) * g / max_years;
+    let sy = |v: f64| y1 - (y1 - y0) * (v - lo) / (hi - lo);
+    let accent = t.series[SHRINK];
+
+    let mut s = open(
+        w,
+        h,
+        t,
+        "What autonomy adds, by how long ground support lasts",
+        "The shrinking quorum's useful work relative to fixed TMR with a ground team that commands the same \
+         fallback 30 days after it is needed. With no ground team the gain is about 1.33x; it falls as support \
+         lasts longer and reaches 1.00x if support never ends.",
+    );
+    s += "<text class=\"title\" x=\"0\" y=\"24\">What autonomy adds, by how long ground support lasts</text>";
+    s += "<text class=\"sub\" x=\"0\" y=\"47\">Shrinking quorum vs fixed TMR with a ground team that commands the same fallback. At 0, there is none.</text>";
+    s += "<text class=\"sub\" x=\"0\" y=\"66\">Answer time barely matters: 1 day and 6 months give the same result. Band: 95% CI.</text>";
+
+    for i in 0..=4 {
+        let v = lo + (hi - lo) * i as f64 / 4.0;
+        let y = sy(v);
+        write!(s, "<line class=\"grid\" x1=\"{x0}\" y1=\"{y:.1}\" x2=\"{x1}\" y2=\"{y:.1}\"/>").unwrap();
+        write!(s, "<text class=\"tick\" x=\"{}\" y=\"{:.1}\" text-anchor=\"end\">{v:.1}x</text>", x0 - 8.0, y + 4.0).unwrap();
+    }
+    for g in (0..=max_years as usize).step_by(50) {
+        write!(s, "<text class=\"tick\" x=\"{:.1}\" y=\"{}\" text-anchor=\"middle\">{g}</text>", sx(g as f64), y1 + 18.0).unwrap();
+    }
+    write!(s, "<text class=\"note\" x=\"{x1}\" y=\"{}\" text-anchor=\"end\">years of ground support</text>", y1 + 38.0).unwrap();
+
+    // The 95% band, then the line.
+    let upper: String = pts.iter().map(|p| format!("L{:.1},{:.1}", sx(p.ground_years), sy(p.ci.1))).collect();
+    let lower: String = pts.iter().rev().map(|p| format!("L{:.1},{:.1}", sx(p.ground_years), sy(p.ci.0))).collect();
+    write!(s, "<path d=\"M{}Z\" fill=\"{accent}\" fill-opacity=\"{}\"/>", &(upper + &lower)[1..], t.wash + 0.06).unwrap();
+    let line: String = pts
+        .iter()
+        .enumerate()
+        .map(|(i, p)| format!("{}{:.1},{:.1}", if i == 0 { "M" } else { "L" }, sx(p.ground_years), sy(p.ratio)))
+        .collect();
+    write!(s, "<path d=\"{line}\" fill=\"none\" stroke=\"{accent}\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>").unwrap();
+
+    // Voyager's ground support so far, and where it leaves the curve.
+    let vx = sx(VOYAGER_YEARS);
+    let vy = sy(interp(pts, VOYAGER_YEARS));
+    write!(s, "<line x1=\"{vx:.1}\" y1=\"{y0}\" x2=\"{vx:.1}\" y2=\"{y1}\" stroke=\"{}\" stroke-width=\"1\"/>", t.faint).unwrap();
+    write!(s, "<text class=\"note\" x=\"{:.1}\" y=\"{}\">Voyager so far, {VOYAGER_YEARS} years</text>", vx + 8.0, y0 + 12.0).unwrap();
+    dot(&mut s, vx, vy, accent, t.bg);
+    write!(s, "<text class=\"value\" x=\"{:.1}\" y=\"{:.1}\">{:.2}x</text>", vx + 10.0, vy - 8.0, interp(pts, VOYAGER_YEARS)).unwrap();
+
+    let first = &pts[0];
+    dot(&mut s, sx(0.0), sy(first.ratio), accent, t.bg);
+    write!(s, "<text class=\"value\" x=\"{:.1}\" y=\"{:.1}\">{:.2}x</text>", sx(0.0) + 10.0, sy(first.ratio) - 10.0, first.ratio).unwrap();
+    write!(
+        s,
+        "<text class=\"note\" x=\"{x1}\" y=\"{:.1}\" text-anchor=\"end\">support that never ends: 1.00x</text>",
+        sy(1.0) - 24.0
+    )
+    .unwrap();
+
+    s += "</svg>\n";
+    s
+}
+
+/// Linear interpolation of the ground curve at `g` years.
+fn interp(pts: &[GroundPoint], g: f64) -> f64 {
+    let i = pts.iter().position(|p| p.ground_years >= g).unwrap_or(pts.len() - 1).max(1);
+    let (a, b) = (&pts[i - 1], &pts[i]);
+    a.ratio + (b.ratio - a.ratio) * (g - a.ground_years) / (b.ground_years - a.ground_years)
+}
+
+// ---------------------------------------------------------------- data for the page
+
+fn json_f(v: f64) -> String {
+    if v.is_finite() { format!("{:.4}", v) } else { "null".into() }
+}
+
+fn json_list(v: &[f64]) -> String {
+    format!("[{}]", v.iter().map(|&x| json_f(x)).collect::<Vec<_>>().join(","))
+}
+
+struct Headline {
+    work_vs_tmr: (f64, (f64, f64)),
+    wrong_vs_simplex: (f64, (f64, f64)),
+    break_even_years: (f64, (f64, f64)),
+    useful_years: [f64; 3],
+    service_years: [f64; 3],
+    wrong_per_mission: [f64; 3],
+}
+
+fn data_json(h: &Headline, line: &[Vec<f64>; 3], rows: &[Row], default: (f64, f64), ground: &[GroundPoint]) -> String {
+    let pair = |(v, (lo, hi)): (f64, (f64, f64))| format!("{{\"value\":{},\"lo\":{},\"hi\":{}}}", json_f(v), json_f(lo), json_f(hi));
+    let sweep: Vec<String> = rows
+        .iter()
+        .map(|r| {
+            let pts: Vec<String> = r
+                .points
+                .iter()
+                .map(|(l, w, x)| format!("{{\"value\":\"{l}\",\"work\":{},\"wrong\":{}}}", json_f(*w), x.map_or("null".into(), json_f)))
+                .collect();
+            format!("{{\"name\":\"{}\",\"values\":\"{}\",\"points\":[{}]}}", r.name, r.values, pts.join(","))
+        })
+        .collect();
+    let ground: Vec<String> = ground
+        .iter()
+        .map(|p| format!("{{\"years\":{},\"ratio\":{},\"lo\":{},\"hi\":{}}}", json_f(p.ground_years), json_f(p.ratio), json_f(p.ci.0), json_f(p.ci.1)))
+        .collect();
+    let policies = ["fixed TMR", "standby simplex", "shrinking quorum"];
+    let table: Vec<String> = (0..3)
+        .map(|p| {
+            format!(
+                "{{\"policy\":\"{}\",\"useful_years\":{},\"service_years\":{},\"wrong_per_mission\":{}}}",
+                policies[p],
+                json_f(h.useful_years[p]),
+                json_f(h.service_years[p]),
+                json_f(h.wrong_per_mission[p])
+            )
+        })
+        .collect();
+    format!(
+        "{{\"runs\":{RUNS},\"sweep_runs\":{SWEEP_RUNS},\"seed\":{SEED},\
+         \"headline\":{{\"work_vs_tmr\":{},\"wrong_vs_simplex\":{},\"break_even_years\":{}}},\
+         \"policies\":[{}],\
+         \"timeline\":{{\"tmr\":{},\"simplex\":{},\"shrink\":{}}},\
+         \"sweep\":{{\"default\":{{\"work\":{},\"wrong\":{}}},\"rows\":[{}]}},\
+         \"ground\":{{\"latency_days\":{GROUND_LATENCY_DAYS},\"voyager_years\":{VOYAGER_YEARS},\"points\":[{}]}}}}\n",
+        pair(h.work_vs_tmr),
+        pair(h.wrong_vs_simplex),
+        pair(h.break_even_years),
+        table.join(","),
+        json_list(&line[TMR]),
+        json_list(&line[SIMPLEX]),
+        json_list(&line[SHRINK]),
+        json_f(default.0),
+        json_f(default.1),
+        sweep.join(","),
+        ground.join(",")
+    )
 }
 
 fn sensitivity_chart(t: &Theme, rows: &[Row], default: (f64, f64)) -> String {
@@ -348,19 +499,55 @@ fn main() {
             let work: Vec<f64> = totals.iter().map(Totals::work_vs_tmr).collect();
             let wrong: Vec<f64> = totals.iter().filter_map(Totals::wrong_vs_simplex).collect();
             let values = sw.configs.iter().map(|(l, _)| l.rsplit(' ').next().unwrap().to_string()).collect::<Vec<_>>();
+            let points = values
+                .iter()
+                .zip(&totals)
+                .map(|(v, t)| (v.clone(), t.work_vs_tmr(), t.wrong_vs_simplex()))
+                .collect();
             Row {
                 name: sw.name,
                 values: format!("{} to {}", values.first().unwrap(), values.last().unwrap()),
                 work: range(&work),
                 wrong: range(&wrong),
+                points,
             }
         })
         .collect();
 
+    // The headline numbers, with 95% intervals, from the same 2,000 missions
+    // as the timeline and the `dusk` report.
+    let r = run_all(&base, RUNS, SEED, threads);
+    let (tmr, simplex, shrink) = (TMR, SIMPLEX, SHRINK);
+    let all: Vec<usize> = (0..r.len()).collect();
+    let wrong_share = |idx: &[usize]| {
+        let w = |p: usize| idx.iter().map(|&i| r[i][p].wrong_days as f64).sum::<f64>();
+        w(shrink) / w(simplex)
+    };
+    let be = |idx: &[usize]| break_even_years(&r, idx, shrink, tmr).unwrap_or(f64::NAN);
+    let mean = |f: &dyn Fn(&dusk::model::Outcome) -> f64, p: usize| r.iter().map(|o| f(&o[p])).sum::<f64>() / r.len() as f64;
+    let headline = Headline {
+        work_vs_tmr: work_ratio(&r, shrink, tmr, SEED),
+        wrong_vs_simplex: (wrong_share(&all), bootstrap(r.len(), SEED, wrong_share)),
+        break_even_years: (be(&all), bootstrap(r.len(), SEED, be)),
+        useful_years: [0, 1, 2].map(|p| mean(&|o| o.useful_years(), p)),
+        service_years: [0, 1, 2].map(|p| mean(&|o| o.end_years(), p)),
+        wrong_per_mission: [0, 1, 2].map(|p| mean(&|o| o.wrong_days as f64, p)),
+    };
+
+    // Ground support from none to 250 years, answering in 30 days.
+    let span: Vec<f64> = (0..=50).map(|i| i as f64 * 5.0).collect();
+    let ground = ground_curve(&base, RUNS, SEED, threads, &span, &[GROUND_LATENCY_DAYS]);
+
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("docs");
     std::fs::create_dir_all(&dir).expect("create docs/");
+    std::fs::write(dir.join("data.json"), data_json(&headline, &line, &rows, default, &ground)).expect("write data.json");
+    println!("wrote {}", dir.join("data.json").display());
     for t in [&LIGHT, &DARK] {
-        for (stem, svg) in [("output", output_chart(t, &line, years)), ("sensitivity", sensitivity_chart(t, &rows, default))] {
+        for (stem, svg) in [
+            ("output", output_chart(t, &line, years)),
+            ("sensitivity", sensitivity_chart(t, &rows, default)),
+            ("ground", ground_chart(t, &ground)),
+        ] {
             let path = dir.join(format!("{stem}-{}.svg", t.name));
             std::fs::write(&path, svg).expect("write chart");
             println!("wrote {}", path.display());
@@ -368,6 +555,19 @@ fn main() {
     }
 
     println!();
+    println!(
+        "headline: {:.2}x vs TMR ({:.2}-{:.2}); {:.0}% of simplex wrong ({:.0}-{:.0}); break-even {:.0} y ({:.0}-{:.0}); at Voyager {VOYAGER_YEARS} y: {:.2}x",
+        headline.work_vs_tmr.0,
+        headline.work_vs_tmr.1 .0,
+        headline.work_vs_tmr.1 .1,
+        headline.wrong_vs_simplex.0 * 100.0,
+        headline.wrong_vs_simplex.1 .0 * 100.0,
+        headline.wrong_vs_simplex.1 .1 * 100.0,
+        headline.break_even_years.0,
+        headline.break_even_years.1 .0,
+        headline.break_even_years.1 .1,
+        interp(&ground, VOYAGER_YEARS)
+    );
     println!("plotted to year {years}; default work vs TMR {:.2}x, wrong vs simplex {:.0}%", default.0, default.1 * 100.0);
     for r in &rows {
         println!(
