@@ -25,28 +25,28 @@ The shrinking quorum matches fixed TMR while three processors survive. It
 pulls ahead as TMR starts to stop, and it keeps working long after. The shaded
 area is the number that matters: total useful work across the whole decline.
 
-Default parameters, 2,000 missions, seed 1:
+Default parameters, 10,000 missions, seed 1:
 
 ```
 policy              useful      p10      p50      p90      service   wrong days
                     mean y                                  mean y   mean / run
-fixed TMR             99.2     37.0     92.3    170.2         99.3        0.000
-standby simplex       82.4     38.7     77.4    132.5        165.0        0.586
-shrinking quorum     132.0     63.5    126.2    207.4        165.0        0.236
+fixed TMR             99.0     37.6     92.7    168.9         99.0        0.000
+standby simplex       83.1     38.4     78.3    134.0        166.4        0.603
+shrinking quorum     132.6     64.3    126.6    208.3        166.4        0.246
 
-shrinking quorum vs fixed TMR: 1.33x the useful work in total (95% CI 1.31x to 1.35x); per mission median 1.26x (p10 1.00x, p90 2.33x)
-shrinking quorum vs standby simplex: 160% of the useful work, 40% of the wrong results (95% CI 37% to 43%)
-break-even: fixed TMR comes out ahead only if one wrong result costs more than 139 years of useful work (95% CI 128 to 152)
+shrinking quorum vs fixed TMR: 1.34x the useful work in total (95% CI 1.33x to 1.35x); per mission median 1.27x (p10 1.00x, p90 2.33x)
+shrinking quorum vs standby simplex: 160% of the useful work, 41% of the wrong results (95% CI 40% to 42%)
+break-even: fixed TMR comes out ahead only if one wrong result costs more than 136 years of useful work (95% CI 131 to 142)
 ```
 
-- **Against fixed TMR:** 1.33x the useful work (95% CI 1.31x to 1.35x). Never
+- **Against fixed TMR:** 1.34x the useful work (95% CI 1.33x to 1.35x). Never
   less on any single mission, because the two policies are identical until TMR
   stops. The cost is a small number of wrong results in the single-processor
   tail, which TMR never lives long enough to produce.
 - **The price of those wrong results:** TMR comes out ahead only if one wrong
-  result costs more than **139 years** of useful work (95% CI 128 to 152).
+  result costs more than **136 years** of useful work (95% CI 131 to 142).
 - **Against standby simplex:** the same service life, 1.6x the useful work, and
-  60% fewer wrong results (95% CI 57% to 63%), because it votes for as long as
+  59% fewer wrong results (95% CI 58% to 60%), because it votes for as long as
   it has hardware to vote with.
 
 Intervals are from a paired bootstrap: 2,000 resamples of whole missions.
@@ -60,17 +60,15 @@ the ground after some delay, as long as ground support still exists.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/ground-dark.svg">
-  <img src="docs/ground-light.svg" alt="The shrinking quorum's useful work relative to TMR with a ground-commanded fallback, by years of ground support. 1.33x with no ground team, 1.24x at Voyager's 49 years, falling to 1.00x as support lasts past about 200 years." width="760">
+  <img src="docs/ground-light.svg" alt="The shrinking quorum's useful work relative to TMR with a ground-commanded fallback, by years of ground support. 1.34x with no ground team, 1.25x at Voyager's 49 years, falling to 1.00x as support lasts past about 200 years." width="760">
 </picture>
 
 ```
-2000 missions, seed 1; shrinking quorum's useful work vs TMR + ground fallback
-
 ground support ends        1 day   30 days  180 days   95% CI at 30 days
-at launch                  1.33x     1.33x     1.33x   1.31x to 1.35x
-after 10 years             1.33x     1.33x     1.33x   1.31x to 1.34x
-after 25 years             1.31x     1.31x     1.31x   1.29x to 1.33x
-after 50 years             1.24x     1.24x     1.24x   1.22x to 1.25x
+at launch                  1.34x     1.34x     1.34x   1.33x to 1.35x
+after 10 years             1.33x     1.33x     1.33x   1.33x to 1.34x
+after 25 years             1.31x     1.31x     1.31x   1.30x to 1.32x
+after 50 years             1.25x     1.25x     1.25x   1.24x to 1.25x
 after 100 years            1.11x     1.11x     1.11x   1.10x to 1.11x
 after 200 years            1.01x     1.01x     1.01x   1.01x to 1.01x
 never                      1.00x     1.00x     1.00x   1.00x to 1.00x
@@ -82,7 +80,7 @@ never                      1.00x     1.00x     1.00x   1.00x to 1.00x
 - **What matters is whether anyone is still there.** With ground support that
   never ends, autonomy adds nothing to throughput: the ground does the same
   thing by hand. The whole gain comes from the years after support ends. At
-  Voyager's 49 years so far, it is still 1.24x.
+  Voyager's 49 years so far, it is still 1.25x.
 
 These years are relative to the hardware: with a 125-year Weibull scale, the
 median processor lives about 98 years. Shorter-lived hardware moves the curve
@@ -90,12 +88,12 @@ left.
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="docs/sensitivity-dark.svg">
-  <img src="docs/sensitivity-light.svg" alt="For each of six uncertain parameters, the range of the shrinking quorum useful work relative to fixed TMR (1.11x to 1.66x overall) and its wrong results relative to standby simplex (19% to 53% overall)." width="760">
+  <img src="docs/sensitivity-light.svg" alt="For each of six uncertain parameters, the range of the shrinking quorum useful work relative to fixed TMR (1.11x to 1.68x overall) and its wrong results relative to standby simplex (18% to 53% overall)." width="760">
 </picture>
 
 `--sweep` varies each parameter the model cannot pin down. Across every row,
-the shrinking quorum returned **1.11x to 1.66x** the useful work of fixed TMR
-and **47% to 81% fewer** wrong results than standby simplex. The work gain is
+the shrinking quorum returned **1.11x to 1.68x** the useful work of fixed TMR
+and **47% to 82% fewer** wrong results than standby simplex. The work gain is
 largest with early, random failures (Weibull shape 1) and smallest with sharp
 wear-out (shape 4), where all three processors tend to die close together and
 there is little tail left to use.
@@ -104,35 +102,35 @@ there is little tail left to use.
 <summary>Full sweep output (the numbers behind the chart)</summary>
 
 ```
-1000 missions per row, seed 1; unlisted parameters at their defaults
+10000 missions per row, seed 1; unlisted parameters at their defaults
 
 varied                        work vs TMR  wrong/mission wrong vs simplex
-shape 1                             1.55x          0.398            53%
-shape 1.5                           1.33x          0.243            40%
-shape 2.5                           1.18x          0.141            26%
-shape 4                             1.11x          0.098            19%
-p_corr 0                            1.35x          0.264            41%
-p_corr 0.1                          1.33x          0.243            40%
-p_corr 0.3                          1.28x          0.182            35%
-p_corr 0.6                          1.22x          0.121            30%
-spares 0                            1.33x          0.243            40%
-spares 1                            1.35x          0.220            35%
-spares 2                            1.34x          0.221            34%
-spares 4                            1.34x          0.214            31%
-p_upset 1e-5                        1.33x          0.001            20%
-p_upset 1e-4                        1.33x          0.028            44%
-p_upset 1e-3                        1.33x          0.243            40%
-p_upset 1e-2                        1.33x          2.475            40%
-coverage 0.9                        1.33x          2.482            40%
-coverage 0.99                       1.33x          0.243            40%
-coverage 0.999                      1.33x          0.033            52%
-self-check throughput 0.25          1.17x          0.243            40%
-self-check throughput 0.5           1.33x          0.243            40%
-self-check throughput 1             1.66x          0.243            40%
+shape 1                             1.56x          0.399            53%
+shape 1.5                           1.34x          0.246            41%
+shape 2.5                           1.19x          0.151            28%
+shape 4                             1.11x          0.091            18%
+p_corr 0                            1.35x          0.267            42%
+p_corr 0.1                          1.34x          0.246            41%
+p_corr 0.3                          1.30x          0.201            38%
+p_corr 0.6                          1.22x          0.123            31%
+spares 0                            1.34x          0.246            41%
+spares 1                            1.35x          0.231            37%
+spares 2                            1.35x          0.223            34%
+spares 4                            1.34x          0.216            31%
+p_upset 1e-5                        1.34x          0.002            33%
+p_upset 1e-4                        1.34x          0.026            43%
+p_upset 1e-3                        1.34x          0.246            41%
+p_upset 1e-2                        1.34x          2.461            41%
+coverage 0.9                        1.34x          2.489            41%
+coverage 0.99                       1.34x          0.246            41%
+coverage 0.999                      1.34x          0.025            40%
+self-check throughput 0.25          1.17x          0.246            41%
+self-check throughput 0.5           1.34x          0.246            41%
+self-check throughput 1             1.68x          0.246            41%
 ```
 
-At `p_upset 1e-5` there is about one wrong result in 1,000 missions, so the
-20% in that row is noise, not a finding.
+At `p_upset 1e-5` there are only about 20 wrong results across all 10,000
+missions, so the 33% in that row is noisy. Treat it as a rough figure.
 
 </details>
 
@@ -148,8 +146,8 @@ cargo run --release --bin charts    # redraw the charts in docs/
 cargo test --release
 ```
 
-No dependencies. The default run takes under a second; the sweep and the
-ground table a few seconds each.
+No dependencies. On an 8-core laptop the default run takes about 2 seconds,
+`--ground` about 10, and `--sweep` about 30.
 Results depend only on the seed, never on the thread count.
 
 The charts are plain SVG, written by `src/bin/charts.rs` from the same seeds as

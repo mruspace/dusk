@@ -11,8 +11,8 @@ use dusk::{break_even_years, bootstrap, ground_curve, run_all, sweeps, timeline,
 use std::fmt::Write as _;
 use std::path::Path;
 
-const RUNS: usize = 2000;
-const SWEEP_RUNS: usize = 1000;
+const RUNS: usize = 10_000;
+const SWEEP_RUNS: usize = RUNS;
 const SEED: u64 = 1;
 
 struct Theme {
@@ -85,6 +85,63 @@ fn open(w: f64, h: f64, t: &Theme, title: &str, desc: &str) -> String {
     )
 }
 
+/// The curve segments ("C..." commands, no leading move) of a monotone cubic
+/// through `p` (Fritsch-Carlson). It never overshoots: between two points it
+/// stays between their values, so smoothing cannot invent a bump the data
+/// does not have. Works in either x direction.
+fn smooth_segments(p: &[(f64, f64)]) -> String {
+    let n = p.len();
+    if n < 2 {
+        return String::new();
+    }
+    let d: Vec<f64> = p.windows(2).map(|w| (w[1].1 - w[0].1) / (w[1].0 - w[0].0)).collect();
+    let mut m = vec![0.0; n];
+    m[0] = d[0];
+    m[n - 1] = d[n - 2];
+    for i in 1..n - 1 {
+        m[i] = if d[i - 1] * d[i] <= 0.0 { 0.0 } else { (d[i - 1] + d[i]) / 2.0 };
+    }
+    for i in 0..n - 1 {
+        if d[i] == 0.0 {
+            m[i] = 0.0;
+            m[i + 1] = 0.0;
+            continue;
+        }
+        let (a, b) = (m[i] / d[i], m[i + 1] / d[i]);
+        let h = a * a + b * b;
+        if h > 9.0 {
+            let t = 3.0 / h.sqrt();
+            m[i] = t * a * d[i];
+            m[i + 1] = t * b * d[i];
+        }
+    }
+    let mut out = String::new();
+    for i in 0..n - 1 {
+        let ((x0, y0), (x1, y1)) = (p[i], p[i + 1]);
+        let h = (x1 - x0) / 3.0;
+        write!(out, "C{:.1},{:.1} {:.1},{:.1} {x1:.1},{y1:.1}", x0 + h, y0 + m[i] * h, x1 - h, y1 - m[i + 1] * h).unwrap();
+    }
+    out
+}
+
+/// 10000 as "10,000".
+fn thousands(n: usize) -> String {
+    let s = n.to_string();
+    let mut out = String::new();
+    for (i, c) in s.chars().enumerate() {
+        if i > 0 && (s.len() - i) % 3 == 0 {
+            out.push(',');
+        }
+        out.push(c);
+    }
+    out
+}
+
+/// A whole monotone-cubic path through `p`.
+fn smooth(p: &[(f64, f64)]) -> String {
+    format!("M{:.1},{:.1}{}", p[0].0, p[0].1, smooth_segments(p))
+}
+
 /// A dot with a ring in the surface colour, so it stays legible on a line.
 fn dot(s: &mut String, x: f64, y: f64, fill: &str, bg: &str) {
     write!(s, "<circle cx=\"{x:.1}\" cy=\"{y:.1}\" r=\"4.5\" fill=\"{fill}\" stroke=\"{bg}\" stroke-width=\"2\"/>").unwrap();
@@ -103,13 +160,20 @@ fn output_chart(t: &Theme, line: &[Vec<f64>; 3], years: usize) -> String {
         h,
         t,
         "Useful output over the mission",
-        "Mean daily useful output of three redundancy policies across 2,000 simulated missions. \
+        &format!("Mean daily useful output of three redundancy policies across {} simulated missions. \
          Fixed TMR stops once fewer than two processors survive. Standby simplex runs at half rate for the whole life. \
          The shrinking quorum matches TMR while it can vote, then keeps going at half rate on one processor.",
+            thousands(RUNS)
+        ),
     );
 
     s += "<text class=\"title\" x=\"0\" y=\"24\">Useful output over the mission</text>";
-    s += "<text class=\"sub\" x=\"0\" y=\"47\">Mean over 2,000 simulated missions. 100% is a full voting set working every day.</text>";
+    write!(
+        s,
+        "<text class=\"sub\" x=\"0\" y=\"47\">Mean over {} simulated missions. 100% is a full voting set working every day.</text>",
+        thousands(RUNS)
+    )
+    .unwrap();
     s += "<text class=\"sub\" x=\"0\" y=\"66\">The shaded area under the shrinking quorum is its total useful work.</text>";
 
     // Legend: Mru's policy first, then the baselines.
@@ -152,19 +216,13 @@ fn output_chart(t: &Theme, line: &[Vec<f64>; 3], years: usize) -> String {
         p.extend(v.iter().enumerate().map(|(i, &x)| (sx(i as f64 + 0.5), sy(x))));
         p
     };
-    let path = |p: &[(f64, f64)]| -> String {
-        p.iter()
-            .enumerate()
-            .map(|(i, (x, y))| format!("{}{x:.1},{y:.1}", if i == 0 { "M" } else { "L" }))
-            .collect()
-    };
 
     let shrink = pts(&line[SHRINK]);
     let last = shrink.last().unwrap().0;
     write!(
         s,
         "<path d=\"{}L{last:.1},{y1}L{x0},{y1}Z\" fill=\"{}\" fill-opacity=\"{}\"/>",
-        path(&shrink),
+        smooth(&shrink),
         t.series[SHRINK],
         t.wash
     )
@@ -173,7 +231,7 @@ fn output_chart(t: &Theme, line: &[Vec<f64>; 3], years: usize) -> String {
         write!(
             s,
             "<path d=\"{}\" fill=\"none\" stroke=\"{}\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>",
-            path(&pts(&line[p])),
+            smooth(&pts(&line[p])),
             t.series[p]
         )
         .unwrap();
@@ -250,14 +308,19 @@ fn ground_chart(t: &Theme, pts: &[GroundPoint]) -> String {
     write!(s, "<text class=\"note\" x=\"{x1}\" y=\"{}\" text-anchor=\"end\">years of ground support</text>", y1 + 38.0).unwrap();
 
     // The 95% band, then the line.
-    let upper: String = pts.iter().map(|p| format!("L{:.1},{:.1}", sx(p.ground_years), sy(p.ci.1))).collect();
-    let lower: String = pts.iter().rev().map(|p| format!("L{:.1},{:.1}", sx(p.ground_years), sy(p.ci.0))).collect();
-    write!(s, "<path d=\"M{}Z\" fill=\"{accent}\" fill-opacity=\"{}\"/>", &(upper + &lower)[1..], t.wash + 0.06).unwrap();
-    let line: String = pts
-        .iter()
-        .enumerate()
-        .map(|(i, p)| format!("{}{:.1},{:.1}", if i == 0 { "M" } else { "L" }, sx(p.ground_years), sy(p.ratio)))
-        .collect();
+    let upper: Vec<(f64, f64)> = pts.iter().map(|p| (sx(p.ground_years), sy(p.ci.1))).collect();
+    let lower: Vec<(f64, f64)> = pts.iter().rev().map(|p| (sx(p.ground_years), sy(p.ci.0))).collect();
+    write!(
+        s,
+        "<path d=\"{}L{:.1},{:.1}{}Z\" fill=\"{accent}\" fill-opacity=\"{}\"/>",
+        smooth(&upper),
+        lower[0].0,
+        lower[0].1,
+        smooth_segments(&lower),
+        t.wash + 0.06
+    )
+    .unwrap();
+    let line = smooth(&pts.iter().map(|p| (sx(p.ground_years), sy(p.ratio))).collect::<Vec<_>>());
     write!(s, "<path d=\"{line}\" fill=\"none\" stroke=\"{accent}\" stroke-width=\"2\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>").unwrap();
 
     // Voyager's ground support so far, and where it leaves the curve.
@@ -403,7 +466,12 @@ fn sensitivity_chart(t: &Theme, rows: &[Row], default: (f64, f64)) -> String {
          useful work relative to fixed TMR and its wrong results relative to standby simplex.",
     );
     s += "<text class=\"title\" x=\"0\" y=\"24\">How much the result depends on the assumptions</text>";
-    s += "<text class=\"sub\" x=\"0\" y=\"47\">Each parameter varied on its own, the rest at default. 1,000 missions per point.</text>";
+    write!(
+        s,
+        "<text class=\"sub\" x=\"0\" y=\"47\">Each parameter varied on its own, the rest at default. {} missions per point.</text>",
+        thousands(SWEEP_RUNS)
+    )
+    .unwrap();
     s += "<text class=\"sub\" x=\"0\" y=\"66\">A line spans the results across that parameter's values. The vertical rule is the default run.</text>";
 
     for (i, r) in rows.iter().enumerate() {
@@ -514,7 +582,7 @@ fn main() {
         })
         .collect();
 
-    // The headline numbers, with 95% intervals, from the same 2,000 missions
+    // The headline numbers, with 95% intervals, from the same missions
     // as the timeline and the `dusk` report.
     let r = run_all(&base, RUNS, SEED, threads);
     let (tmr, simplex, shrink) = (TMR, SIMPLEX, SHRINK);

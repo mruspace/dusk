@@ -7,7 +7,7 @@ Monte Carlo of redundancy policies on hardware that only ever decays.
 
 usage: dusk [options] [--sweep | --ground]
 
-  --runs N                 missions per policy          (default 2000)
+  --runs N                 missions per policy          (default 10000)
   --seed N                 base seed                    (default 1)
   --threads N              worker threads               (default: all cores)
   --horizon-years X        mission horizon              (default 1000)
@@ -35,7 +35,7 @@ struct Args {
 fn parse() -> Args {
     let mut a = Args {
         cfg: Config::default(),
-        runs: 2000,
+        runs: 10_000,
         seed: 1,
         threads: std::thread::available_parallelism().map_or(4, |n| n.get()),
         sweep: false,
@@ -211,7 +211,7 @@ fn ground(a: &Args) {
 /// Vary each parameter the model cannot pin down and report the two numbers
 /// that matter: extra work over fixed TMR, and wrong results against simplex.
 fn sweep(a: &Args) {
-    let runs = a.runs.min(1000);
+    let runs = a.runs;
     println!("{runs} missions per row, seed {}; unlisted parameters at their defaults", a.seed);
     println!();
     println!(

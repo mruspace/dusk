@@ -200,21 +200,21 @@
       </header>
 
       <p class="lede">Classic triple modular redundancy has a fixed threshold. Three processors vote, two can still detect a disagreement, and one cannot outvote anything, so the system stops. With no repairs and no ground team in reach, that throws away the last processor&rsquo;s whole remaining life.</p>
-      <p class="lede">The <a href="https://mru.space/mru-whitepaper.pdf">Mru whitepaper</a> proposes a <strong>shrinking quorum</strong> instead: vote while three processors are alive, compare while two are, and self-check on one. dusk simulates <span data-k="runs">2,000</span> missions and plays each policy against the same failing hardware.</p>
+      <p class="lede">The <a href="https://mru.space/mru-whitepaper.pdf">Mru whitepaper</a> proposes a <strong>shrinking quorum</strong> instead: vote while three processors are alive, compare while two are, and self-check on one. dusk simulates <span data-k="runs">10,000</span> missions and plays each policy against the same failing hardware.</p>
 
       <div class="stats" aria-label="Headline results">
         <div class="stat">
-          <div class="v" data-k="work">1.33x</div>
+          <div class="v" data-k="work">1.34x</div>
           <div class="l">the useful work of fixed TMR</div>
           <div class="ci" data-k="work-ci"></div>
         </div>
         <div class="stat">
-          <div class="v" data-k="fewer">60%</div>
+          <div class="v" data-k="fewer">59%</div>
           <div class="l">fewer wrong results than standby simplex</div>
           <div class="ci" data-k="fewer-ci"></div>
         </div>
         <div class="stat">
-          <div class="v" data-k="be">139 y</div>
+          <div class="v" data-k="be">136 y</div>
           <div class="l">of work one wrong result must cost before fixed TMR wins</div>
           <div class="ci" data-k="be-ci"></div>
         </div>
@@ -222,7 +222,7 @@
 
       <figure aria-labelledby="f1-t">
         <p class="fig-title" id="f1-t">Useful output over the mission</p>
-        <p class="fig-sub">Mean over <span data-k="runs">2,000</span> missions. 100% is a full voting set working every day. The shaded area is the shrinking quorum&rsquo;s total useful work.</p>
+        <p class="fig-sub">Mean over <span data-k="runs">10,000</span> missions. 100% is a full voting set working every day. The shaded area is the shrinking quorum&rsquo;s total useful work.</p>
         <ul class="legend">
           <li><i style="background:var(--s-shrink)"></i>shrinking quorum (Mru)</li>
           <li><i style="background:var(--s-tmr)"></i>fixed TMR</li>
@@ -242,7 +242,7 @@
       <figure aria-labelledby="f2-t">
         <p class="fig-title" id="f2-t">What autonomy adds, by how long ground support lasts</p>
         <p class="fig-sub">Shrinking quorum vs TMR with a ground team that commands the same fallback 30 days after it is needed. At 0 there is no ground team. Band: 95% interval.</p>
-        <div class="chart" id="ground" tabindex="0" role="img" aria-label="The shrinking quorum's useful work relative to TMR with a ground-commanded fallback. About 1.33x with no ground team, 1.24x at Voyager's 49 years of support, falling to 1.00x as support lasts past about 200 years.">
+        <div class="chart" id="ground" tabindex="0" role="img" aria-label="The shrinking quorum's useful work relative to TMR with a ground-commanded fallback. About 1.34x with no ground team, 1.25x at Voyager's 49 years of support, falling to 1.00x as support lasts past about 200 years.">
           <noscript><img src="ground-light.svg" alt="" width="760"></noscript>
         </div>
         <details><summary>Show the numbers</summary><div class="table-scroll"><table id="ground-table"></table></div></details>
@@ -250,11 +250,11 @@
 
       <ul class="plain">
         <li><strong>Answer time barely matters.</strong> A fallback 1 day or 6 months after it is needed gives the same result to two decimals. The lost days are small next to decades of single-processor life.</li>
-        <li><strong>What matters is whether anyone is still there.</strong> If ground support never ends, autonomy adds nothing to throughput, because the ground does the same thing by hand. The whole gain comes from the years after support ends. At Voyager&rsquo;s <span data-k="voyager-years">49</span> years so far, it is still <span data-k="voyager">1.24x</span>.</li>
+        <li><strong>What matters is whether anyone is still there.</strong> If ground support never ends, autonomy adds nothing to throughput, because the ground does the same thing by hand. The whole gain comes from the years after support ends. At Voyager&rsquo;s <span data-k="voyager-years">49</span> years so far, it is still <span data-k="voyager">1.25x</span>.</li>
       </ul>
 
       <h2>How much the result depends on the assumptions</h2>
-      <p>The parameters are plausible orders of magnitude, not values fitted to flight data. So each one the model cannot pin down is varied on its own, with the rest at default, over <span data-k="sweep-runs">1,000</span> missions per value.</p>
+      <p>The parameters are plausible orders of magnitude, not values fitted to flight data. So each one the model cannot pin down is varied on its own, with the rest at default, over <span data-k="sweep-runs">10,000</span> missions per value.</p>
 
       <figure aria-labelledby="f3-t">
         <p class="fig-title" id="f3-t">Useful work vs fixed TMR</p>
@@ -266,13 +266,13 @@
       <figure aria-labelledby="f4-t">
         <p class="fig-title" id="f4-t">Wrong results vs standby simplex</p>
         <p class="fig-sub">Lower is better; 100% is no gain.</p>
-        <div class="chart" id="sweep-wrong" tabindex="0" role="img" aria-label="Across every parameter varied, the shrinking quorum makes between about 19% and 53% of standby simplex's wrong results."></div>
+        <div class="chart" id="sweep-wrong" tabindex="0" role="img" aria-label="Across every parameter varied, the shrinking quorum makes between about 18% and 53% of standby simplex's wrong results."></div>
         <details><summary>Show the numbers</summary><div class="table-scroll"><table id="sweep-table"></table></div>
-          <p>At an upset rate of 1e-5 there is about one wrong result in 1,000 missions, so that row&rsquo;s wrong-result share is noise, not a finding.</p></details>
+          <p>At an upset rate of 1e-5 there are only about 20 wrong results across all 10,000 missions, so that row&rsquo;s wrong-result share is noisy. Treat it as a rough figure.</p></details>
       </figure>
 
       <h2>All three policies</h2>
-      <p>Means over the same <span data-k="runs">2,000</span> missions. Years are mission years.</p>
+      <p>Means over the same <span data-k="runs">10,000</span> missions. Years are mission years.</p>
       <div class="table-scroll"><table id="policy-table"></table></div>
 
       <h2>What this does not claim</h2>
@@ -335,9 +335,29 @@ cargo run --release -- --sweep   # sensitivity</code></pre>
       t.parentNode.insertBefore(r, t);
       return t;
     }
-    function path(pts) {
-      return pts.map((p, i) => (i ? "L" : "M") + p[0].toFixed(1) + "," + p[1].toFixed(1)).join("");
+    // Monotone cubic (Fritsch-Carlson): smooth, but it never overshoots, so
+    // it cannot draw a bump the data does not have. Same as the README charts.
+    function smoothSeg(p) {
+      const n = p.length;
+      if (n < 2) return "";
+      const d = [];
+      for (let i = 0; i < n - 1; i++) d.push((p[i + 1][1] - p[i][1]) / (p[i + 1][0] - p[i][0]));
+      const m = new Array(n).fill(0);
+      m[0] = d[0]; m[n - 1] = d[n - 2];
+      for (let i = 1; i < n - 1; i++) m[i] = d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2;
+      for (let i = 0; i < n - 1; i++) {
+        if (d[i] === 0) { m[i] = 0; m[i + 1] = 0; continue; }
+        const a = m[i] / d[i], b = m[i + 1] / d[i], h = a * a + b * b;
+        if (h > 9) { const t = 3 / Math.sqrt(h); m[i] = t * a * d[i]; m[i + 1] = t * b * d[i]; }
+      }
+      let out = "";
+      for (let i = 0; i < n - 1; i++) {
+        const [x0, y0] = p[i], [x1, y1] = p[i + 1], h = (x1 - x0) / 3;
+        out += `C${(x0 + h).toFixed(1)},${(y0 + m[i] * h).toFixed(1)} ${(x1 - h).toFixed(1)},${(y1 - m[i + 1] * h).toFixed(1)} ${x1.toFixed(1)},${y1.toFixed(1)}`;
+      }
+      return out;
     }
+    function smooth(p) { return `M${p[0][0].toFixed(1)},${p[0][1].toFixed(1)}` + smoothSeg(p); }
     function dot(parent, x, y, color) {
       return svg("circle", { cx: x, cy: y, r: 4.5, fill: color, stroke: css("--bg"), "stroke-width": 2 }, parent);
     }
@@ -402,10 +422,10 @@ cargo run --release -- --sweep   # sensitivity</code></pre>
 
       const pts = (arr) => [[sx(0), sy(arr[0])], ...arr.map((v, i) => [sx(i + 0.5), sy(v)])];
       const shrink = pts(d.timeline.shrink);
-      svg("path", { d: path(shrink) + `L${shrink[shrink.length - 1][0]},${p.y1}L${p.x0},${p.y1}Z`, fill: css("--s-shrink"), "fill-opacity": css("--wash") }, s);
+      svg("path", { d: smooth(shrink) + `L${shrink[shrink.length - 1][0]},${p.y1}L${p.x0},${p.y1}Z`, fill: css("--s-shrink"), "fill-opacity": css("--wash") }, s);
       for (const k of ["simplex", "tmr", "shrink"]) {
         const c = SERIES.find((x) => x.key === k).color;
-        svg("path", { d: path(pts(d.timeline[k])), fill: "none", stroke: css(c), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, s);
+        svg("path", { d: smooth(pts(d.timeline[k])), fill: "none", stroke: css(c), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, s);
       }
       if (!narrow) {
         const at = (k, y) => [sx(y + 0.5), sy(d.timeline[k][y])];
@@ -452,9 +472,10 @@ cargo run --release -- --sweep   # sensitivity</code></pre>
       for (let g = 0; g <= maxY; g += narrow ? 100 : 50) text(s, sx(g), p.y1 + 17, g, { "text-anchor": "middle" });
       text(s, p.x1 + 8, H - 2, "years of ground support", { class: "lbl", "text-anchor": "end" });
 
-      const band = pts.map((q) => [sx(q.years), sy(q.hi)]).concat(pts.slice().reverse().map((q) => [sx(q.years), sy(q.lo)]));
-      svg("path", { d: path(band) + "Z", fill: accent, "fill-opacity": parseFloat(css("--wash")) + 0.06 }, s);
-      svg("path", { d: path(pts.map((q) => [sx(q.years), sy(q.ratio)])), fill: "none", stroke: accent, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, s);
+      const upper = pts.map((q) => [sx(q.years), sy(q.hi)]);
+      const lower = pts.slice().reverse().map((q) => [sx(q.years), sy(q.lo)]);
+      svg("path", { d: smooth(upper) + `L${lower[0][0].toFixed(1)},${lower[0][1].toFixed(1)}` + smoothSeg(lower) + "Z", fill: accent, "fill-opacity": parseFloat(css("--wash")) + 0.06 }, s);
+      svg("path", { d: smooth(pts.map((q) => [sx(q.years), sy(q.ratio)])), fill: "none", stroke: accent, "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, s);
 
       const vy = d.ground.voyager_years, vr = interp(pts, vy);
       svg("line", { x1: sx(vy), x2: sx(vy), y1: p.y0, y2: p.y1, stroke: css("--ink-faint"), "stroke-width": 1 }, s);
