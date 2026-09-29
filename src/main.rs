@@ -1,7 +1,5 @@
-mod model;
-mod rng;
-
-use model::{simulate, Config, History, Outcome, Policy};
+use dusk::model::{Config, Outcome, Policy};
+use dusk::{run_all, sweeps, Totals};
 use std::process::exit;
 
 const USAGE: &str = "\
@@ -78,25 +76,6 @@ fn parse() -> Args {
 fn fail(msg: &str) -> ! {
     eprint!("dusk: {msg}\n\n{USAGE}");
     exit(2)
-}
-
-/// Every run's outcome under every policy, in `Policy::ALL` order. Each run's
-/// seed depends only on its index, so the thread count never changes results.
-fn run_all(cfg: &Config, runs: usize, seed: u64, threads: usize) -> Vec<[Outcome; 3]> {
-    let mut results = vec![[Outcome::default(); 3]; runs];
-    let chunk = runs.div_ceil(threads).max(1);
-    std::thread::scope(|s| {
-        for (c, slice) in results.chunks_mut(chunk).enumerate() {
-            s.spawn(move || {
-                for (i, slot) in slice.iter_mut().enumerate() {
-                    let run = (c * chunk + i) as u64;
-                    let h = History::generate(cfg, rng::mix(seed.wrapping_add(run)));
-                    *slot = Policy::ALL.map(|p| simulate(cfg, &h, p));
-                }
-            });
-        }
-    });
-    results
 }
 
 fn mean(v: &[f64]) -> f64 {
@@ -189,41 +168,18 @@ fn sweep(a: &Args) {
         "varied", "work vs TMR", "wrong/mission", "wrong vs simplex"
     );
 
-    let mut rows: Vec<(String, Config)> = Vec::new();
-    let base = a.cfg.clone();
-    for &x in &[1.0, 1.5, 2.5, 4.0] {
-        rows.push((format!("shape {x}"), Config { shape: x, ..base.clone() }));
-    }
-    for &x in &[0.0, 0.1, 0.3, 0.6] {
-        rows.push((format!("p_corr {x}"), Config { p_corr: x, ..base.clone() }));
-    }
-    for &x in &[0usize, 1, 2, 4] {
-        rows.push((format!("spares {x}"), Config { spares: x, ..base.clone() }));
-    }
-    for &x in &[1e-5, 1e-4, 1e-3, 1e-2] {
-        rows.push((format!("p_upset {x:e}"), Config { p_upset: x, ..base.clone() }));
-    }
-    for &x in &[0.9, 0.99, 0.999] {
-        rows.push((format!("coverage {x}"), Config { coverage: x, ..base.clone() }));
-    }
-    for &x in &[0.25, 0.5, 1.0] {
-        rows.push((format!("self-check throughput {x}"), Config { selfcheck_throughput: x, ..base.clone() }));
-    }
-
-    for (label, cfg) in rows {
-        let r = run_all(&cfg, runs, a.seed, a.threads);
-        let sum = |p: usize, f: &dyn Fn(&Outcome) -> f64| r.iter().map(|o| f(&o[p])).sum::<f64>();
-        let work = |o: &Outcome| o.useful_days;
-        let wrong = |o: &Outcome| o.wrong_days as f64;
-        let ws = sum(1, &wrong);
-        let vs_simplex = if ws > 0.0 { format!("{:.0}%", 100.0 * sum(2, &wrong) / ws) } else { "-".into() };
-        println!(
-            "{:<28} {:>11.2}x {:>14.3} {:>14}",
-            label,
-            sum(2, &work) / sum(0, &work),
-            sum(2, &wrong) / runs as f64,
-            vs_simplex
-        );
+    for sweep in sweeps(&a.cfg) {
+        for (label, cfg) in sweep.configs {
+            let t = Totals::of(&run_all(&cfg, runs, a.seed, a.threads));
+            let vs_simplex = t.wrong_vs_simplex().map_or("-".into(), |x| format!("{:.0}%", 100.0 * x));
+            println!(
+                "{:<28} {:>11.2}x {:>14.3} {:>14}",
+                label,
+                t.work_vs_tmr(),
+                t.wrong_days[2] / runs as f64,
+                vs_simplex
+            );
+        }
     }
 }
 

@@ -186,6 +186,12 @@ enum Mode {
 }
 
 pub fn simulate(cfg: &Config, h: &History, policy: Policy) -> Outcome {
+    simulate_traced(cfg, h, policy, |_, _| {})
+}
+
+/// `simulate`, also reporting each day's useful output to `credit` as it is
+/// earned. The charts use this to plot output against mission time.
+pub fn simulate_traced(cfg: &Config, h: &History, policy: Policy, mut credit: impl FnMut(u64, f64)) -> Outcome {
     let mut out = Outcome::default();
     let mut live = Vec::with_capacity(h.units.len());
     let upset = |unit: usize, day: u64| keyed_unit(h.seed, unit as u64, day) < cfg.p_upset;
@@ -212,6 +218,7 @@ pub fn simulate(cfg: &Config, h: &History, policy: Policy) -> Outcome {
                 // the voter catches, never as a wrong majority.
                 if live[..3].iter().filter(|&&u| upset(u, day)).count() <= 1 {
                     out.useful_days += 1.0;
+                    credit(day, 1.0);
                 } else {
                     out.lost_days += 1;
                 }
@@ -222,12 +229,14 @@ pub fn simulate(cfg: &Config, h: &History, policy: Policy) -> Outcome {
                     out.lost_days += 1;
                 } else {
                     out.useful_days += 1.0;
+                    credit(day, 1.0);
                 }
             }
             Mode::Single => {
                 let u = live[0];
                 if !upset(u, day) {
                     out.useful_days += cfg.selfcheck_throughput;
+                    credit(day, cfg.selfcheck_throughput);
                 } else if keyed_unit(h.seed ^ COVERAGE_SALT, u as u64, day) < cfg.coverage {
                     out.lost_days += 1;
                 } else {
@@ -306,11 +315,8 @@ mod tests {
 
     #[test]
     fn correlation_only_pulls_deaths_earlier() {
-        let mut cfg = Config::default();
-        cfg.p_corr = 0.0;
-        let base = History::generate(&cfg, 9);
-        cfg.p_corr = 1.0;
-        let corr = History::generate(&cfg, 9);
+        let base = History::generate(&Config { p_corr: 0.0, ..Config::default() }, 9);
+        let corr = History::generate(&Config { p_corr: 1.0, ..Config::default() }, 9);
         for (a, b) in base.units.iter().zip(&corr.units) {
             assert!(b.dies <= a.dies);
         }

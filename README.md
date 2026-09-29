@@ -14,6 +14,15 @@ program asks what that buys and what it costs, on the same simulated hardware.
 
 ## Results
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/output-dark.svg">
+  <img src="docs/output-light.svg" alt="Mean useful output over mission time for the three policies. Fixed TMR falls to zero first. Standby simplex holds near half rate. The shrinking quorum tracks TMR while it can vote, then continues at half rate, enclosing the largest area." width="760">
+</picture>
+
+The shrinking quorum matches fixed TMR while three processors survive. It
+pulls ahead as TMR starts to stop, and it keeps working long after. The shaded
+area is the number that matters: total useful work across the whole decline.
+
 Default parameters, 2,000 missions, seed 1:
 
 ```
@@ -35,12 +44,53 @@ shrinking quorum vs standby simplex: 160% of the useful work, 40% of the wrong r
   60% fewer wrong results, because it votes for as long as it has hardware to
   vote with.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/sensitivity-dark.svg">
+  <img src="docs/sensitivity-light.svg" alt="For each of six uncertain parameters, the range of the shrinking quorum useful work relative to fixed TMR (1.11x to 1.66x overall) and its wrong results relative to standby simplex (19% to 53% overall)." width="760">
+</picture>
+
 `--sweep` varies each parameter the model cannot pin down. Across every row,
 the shrinking quorum returned **1.11x to 1.66x** the useful work of fixed TMR
 and **47% to 81% fewer** wrong results than standby simplex. The work gain is
 largest with early, random failures (Weibull shape 1) and smallest with sharp
 wear-out (shape 4), where all three processors tend to die close together and
 there is little tail left to use.
+
+<details>
+<summary>Full sweep output (the numbers behind the chart)</summary>
+
+```
+1000 missions per row, seed 1; unlisted parameters at their defaults
+
+varied                        work vs TMR  wrong/mission wrong vs simplex
+shape 1                             1.55x          0.398            53%
+shape 1.5                           1.33x          0.243            40%
+shape 2.5                           1.18x          0.141            26%
+shape 4                             1.11x          0.098            19%
+p_corr 0                            1.35x          0.264            41%
+p_corr 0.1                          1.33x          0.243            40%
+p_corr 0.3                          1.28x          0.182            35%
+p_corr 0.6                          1.22x          0.121            30%
+spares 0                            1.33x          0.243            40%
+spares 1                            1.35x          0.220            35%
+spares 2                            1.34x          0.221            34%
+spares 4                            1.34x          0.214            31%
+p_upset 1e-5                        1.33x          0.001            20%
+p_upset 1e-4                        1.33x          0.028            44%
+p_upset 1e-3                        1.33x          0.243            40%
+p_upset 1e-2                        1.33x          2.475            40%
+coverage 0.9                        1.33x          2.482            40%
+coverage 0.99                       1.33x          0.243            40%
+coverage 0.999                      1.33x          0.033            52%
+self-check throughput 0.25          1.17x          0.243            40%
+self-check throughput 0.5           1.33x          0.243            40%
+self-check throughput 1             1.66x          0.243            40%
+```
+
+At `p_upset 1e-5` there is about one wrong result in 1,000 missions, so the
+20% in that row is noise, not a finding.
+
+</details>
 
 ## Running it
 
@@ -49,11 +99,16 @@ cargo run --release                 # the default scenario
 cargo run --release -- --spares 2   # add salvaged processors
 cargo run --release -- --sweep      # sensitivity across uncertain parameters
 cargo run --release -- --help       # every option
+cargo run --release --bin charts    # redraw the charts in docs/
 cargo test --release
 ```
 
 No dependencies. The default run takes under a second, the sweep a few seconds.
 Results depend only on the seed, never on the thread count.
+
+The charts are plain SVG, written by `src/bin/charts.rs` from the same seeds as
+the tables above, in a light and a dark version styled after
+[mru.space](https://mru.space). Nothing is drawn by hand.
 
 ## The model
 
