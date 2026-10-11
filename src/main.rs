@@ -1,6 +1,6 @@
 use dusk::bench;
 use dusk::model::{Config, Outcome, Policy};
-use dusk::{break_even_years, bootstrap, ground_curve, run_all, sweeps, work_ratio, Totals};
+use dusk::{bootstrap, break_even_years, ground_curve, run_all, sweeps, work_ratio, Totals};
 use std::process::exit;
 
 const USAGE: &str = "\
@@ -141,11 +141,8 @@ fn report(a: &Args) {
 
     let (tmr, simplex, shrink) = (0, 1, 2);
     let ratio: Vec<f64> = {
-        let mut v: Vec<f64> = r
-            .iter()
-            .filter(|o| o[tmr].useful_days > 0.0)
-            .map(|o| o[shrink].useful_days / o[tmr].useful_days)
-            .collect();
+        let mut v: Vec<f64> =
+            r.iter().filter(|o| o[tmr].useful_days > 0.0).map(|o| o[shrink].useful_days / o[tmr].useful_days).collect();
         v.sort_by(|a, b| a.total_cmp(b));
         v
     };
@@ -197,10 +194,7 @@ fn ground(a: &Args) {
     println!("{} missions, seed {}; shrinking quorum's useful work vs TMR + ground fallback", a.runs, a.seed);
     println!();
     let pts = ground_curve(&a.cfg, a.runs, a.seed, a.threads, &GROUND, &LATENCY);
-    println!(
-        "{:<22} {:>9} {:>9} {:>9}   95% CI at 30 days",
-        "ground support ends", "1 day", "30 days", "180 days"
-    );
+    println!("{:<22} {:>9} {:>9} {:>9}   95% CI at 30 days", "ground support ends", "1 day", "30 days", "180 days");
     for (row, g) in pts.chunks(LATENCY.len()).zip(GROUND) {
         let label = match g {
             0.0 => "at launch".to_string(),
@@ -220,10 +214,7 @@ fn sweep(a: &Args) {
     let runs = a.runs;
     println!("{runs} missions per row, seed {}; unlisted parameters at their defaults", a.seed);
     println!();
-    println!(
-        "{:<28} {:>12} {:>14} {:>14}",
-        "varied", "work vs TMR", "wrong/mission", "wrong vs simplex"
-    );
+    println!("{:<28} {:>12} {:>14} {:>14}", "varied", "work vs TMR", "wrong/mission", "wrong vs simplex");
 
     for sweep in sweeps(&a.cfg) {
         for (label, cfg) in sweep.configs {

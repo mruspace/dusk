@@ -11,10 +11,7 @@ use model::{simulate, simulate_traced, Config, History, Outcome, Policy, DAYS_PE
 /// Every run's outcome under every policy, in `Policy::ALL` order. Each run's
 /// seed depends only on its index, so the thread count never changes results.
 pub fn run_all(cfg: &Config, runs: usize, seed: u64, threads: usize) -> Vec<[Outcome; 3]> {
-    run_policies(cfg, runs, seed, threads, &Policy::ALL)
-        .into_iter()
-        .map(|r| [r[0], r[1], r[2]])
-        .collect()
+    run_policies(cfg, runs, seed, threads, &Policy::ALL).into_iter().map(|r| [r[0], r[1], r[2]]).collect()
 }
 
 /// Every run's outcome under each of `policies`, in that order, on the same

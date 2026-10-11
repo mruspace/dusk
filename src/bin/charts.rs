@@ -7,7 +7,7 @@
 //! seeds as `dusk` and `dusk --sweep`, so they match the README tables.
 
 use dusk::model::Config;
-use dusk::{break_even_years, bootstrap, ground_curve, run_all, sweeps, timeline, work_ratio, GroundPoint, Totals};
+use dusk::{bootstrap, break_even_years, ground_curve, run_all, sweeps, timeline, work_ratio, GroundPoint, Totals};
 use std::fmt::Write as _;
 use std::path::Path;
 
@@ -119,7 +119,8 @@ fn smooth_segments(p: &[(f64, f64)]) -> String {
     for i in 0..n - 1 {
         let ((x0, y0), (x1, y1)) = (p[i], p[i + 1]);
         let h = (x1 - x0) / 3.0;
-        write!(out, "C{:.1},{:.1} {:.1},{:.1} {x1:.1},{y1:.1}", x0 + h, y0 + m[i] * h, x1 - h, y1 - m[i + 1] * h).unwrap();
+        write!(out, "C{:.1},{:.1} {:.1},{:.1} {x1:.1},{y1:.1}", x0 + h, y0 + m[i] * h, x1 - h, y1 - m[i + 1] * h)
+            .unwrap();
     }
     out
 }
@@ -144,7 +145,8 @@ fn smooth(p: &[(f64, f64)]) -> String {
 
 /// A dot with a ring in the surface colour, so it stays legible on a line.
 fn dot(s: &mut String, x: f64, y: f64, fill: &str, bg: &str) {
-    write!(s, "<circle cx=\"{x:.1}\" cy=\"{y:.1}\" r=\"4.5\" fill=\"{fill}\" stroke=\"{bg}\" stroke-width=\"2\"/>").unwrap();
+    write!(s, "<circle cx=\"{x:.1}\" cy=\"{y:.1}\" r=\"4.5\" fill=\"{fill}\" stroke=\"{bg}\" stroke-width=\"2\"/>")
+        .unwrap();
 }
 
 // ---------------------------------------------------------------- timeline
@@ -160,7 +162,8 @@ fn output_chart(t: &Theme, line: &[Vec<f64>; 3], years: usize) -> String {
         h,
         t,
         "Useful output over the mission",
-        &format!("Mean daily useful output of three redundancy policies across {} simulated missions. \
+        &format!(
+            "Mean daily useful output of three redundancy policies across {} simulated missions. \
          Fixed TMR stops once fewer than two processors survive. Standby simplex runs at half rate for the whole life. \
          The shrinking quorum matches TMR while it can vote, then keeps going at half rate on one processor.",
             thousands(RUNS)
@@ -197,7 +200,8 @@ fn output_chart(t: &Theme, line: &[Vec<f64>; 3], years: usize) -> String {
         let v = i as f64 / 4.0;
         let y = sy(v);
         write!(s, "<line class=\"grid\" x1=\"{x0}\" y1=\"{y}\" x2=\"{x1}\" y2=\"{y}\"/>").unwrap();
-        write!(s, "<text class=\"tick\" x=\"{}\" y=\"{}\" text-anchor=\"end\">{}%</text>", x0 - 8.0, y + 4.0, i * 25).unwrap();
+        write!(s, "<text class=\"tick\" x=\"{}\" y=\"{}\" text-anchor=\"end\">{}%</text>", x0 - 8.0, y + 4.0, i * 25)
+            .unwrap();
     }
     for yr in (0..=years).step_by(50) {
         write!(
@@ -246,7 +250,8 @@ fn output_chart(t: &Theme, line: &[Vec<f64>; 3], years: usize) -> String {
 
     let yr = crossing(TMR, 0.62);
     let (x, y) = at(TMR, yr);
-    write!(s, "<text class=\"note\" x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"end\">fixed TMR</text>", x - 10.0, y + 4.0).unwrap();
+    write!(s, "<text class=\"note\" x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"end\">fixed TMR</text>", x - 10.0, y + 4.0)
+        .unwrap();
 
     let yr = crossing(SHRINK, 0.55);
     let (x, y) = at(SHRINK, yr);
@@ -300,12 +305,20 @@ fn ground_chart(t: &Theme, pts: &[GroundPoint]) -> String {
         let v = lo + (hi - lo) * i as f64 / 4.0;
         let y = sy(v);
         write!(s, "<line class=\"grid\" x1=\"{x0}\" y1=\"{y:.1}\" x2=\"{x1}\" y2=\"{y:.1}\"/>").unwrap();
-        write!(s, "<text class=\"tick\" x=\"{}\" y=\"{:.1}\" text-anchor=\"end\">{v:.1}x</text>", x0 - 8.0, y + 4.0).unwrap();
+        write!(s, "<text class=\"tick\" x=\"{}\" y=\"{:.1}\" text-anchor=\"end\">{v:.1}x</text>", x0 - 8.0, y + 4.0)
+            .unwrap();
     }
     for g in (0..=max_years as usize).step_by(50) {
-        write!(s, "<text class=\"tick\" x=\"{:.1}\" y=\"{}\" text-anchor=\"middle\">{g}</text>", sx(g as f64), y1 + 18.0).unwrap();
+        write!(
+            s,
+            "<text class=\"tick\" x=\"{:.1}\" y=\"{}\" text-anchor=\"middle\">{g}</text>",
+            sx(g as f64),
+            y1 + 18.0
+        )
+        .unwrap();
     }
-    write!(s, "<text class=\"note\" x=\"{x1}\" y=\"{}\" text-anchor=\"end\">years of ground support</text>", y1 + 38.0).unwrap();
+    write!(s, "<text class=\"note\" x=\"{x1}\" y=\"{}\" text-anchor=\"end\">years of ground support</text>", y1 + 38.0)
+        .unwrap();
 
     // The 95% band, then the line.
     let upper: Vec<(f64, f64)> = pts.iter().map(|p| (sx(p.ground_years), sy(p.ci.1))).collect();
@@ -326,14 +339,39 @@ fn ground_chart(t: &Theme, pts: &[GroundPoint]) -> String {
     // Voyager's ground support so far, and where it leaves the curve.
     let vx = sx(VOYAGER_YEARS);
     let vy = sy(interp(pts, VOYAGER_YEARS));
-    write!(s, "<line x1=\"{vx:.1}\" y1=\"{y0}\" x2=\"{vx:.1}\" y2=\"{y1}\" stroke=\"{}\" stroke-width=\"1\"/>", t.faint).unwrap();
-    write!(s, "<text class=\"note\" x=\"{:.1}\" y=\"{}\">Voyager so far, {VOYAGER_YEARS} years</text>", vx + 8.0, y0 + 12.0).unwrap();
+    write!(
+        s,
+        "<line x1=\"{vx:.1}\" y1=\"{y0}\" x2=\"{vx:.1}\" y2=\"{y1}\" stroke=\"{}\" stroke-width=\"1\"/>",
+        t.faint
+    )
+    .unwrap();
+    write!(
+        s,
+        "<text class=\"note\" x=\"{:.1}\" y=\"{}\">Voyager so far, {VOYAGER_YEARS} years</text>",
+        vx + 8.0,
+        y0 + 12.0
+    )
+    .unwrap();
     dot(&mut s, vx, vy, accent, t.bg);
-    write!(s, "<text class=\"value\" x=\"{:.1}\" y=\"{:.1}\">{:.2}x</text>", vx + 10.0, vy - 8.0, interp(pts, VOYAGER_YEARS)).unwrap();
+    write!(
+        s,
+        "<text class=\"value\" x=\"{:.1}\" y=\"{:.1}\">{:.2}x</text>",
+        vx + 10.0,
+        vy - 8.0,
+        interp(pts, VOYAGER_YEARS)
+    )
+    .unwrap();
 
     let first = &pts[0];
     dot(&mut s, sx(0.0), sy(first.ratio), accent, t.bg);
-    write!(s, "<text class=\"value\" x=\"{:.1}\" y=\"{:.1}\">{:.2}x</text>", sx(0.0) + 10.0, sy(first.ratio) - 10.0, first.ratio).unwrap();
+    write!(
+        s,
+        "<text class=\"value\" x=\"{:.1}\" y=\"{:.1}\">{:.2}x</text>",
+        sx(0.0) + 10.0,
+        sy(first.ratio) - 10.0,
+        first.ratio
+    )
+    .unwrap();
     write!(
         s,
         "<text class=\"note\" x=\"{x1}\" y=\"{:.1}\" text-anchor=\"end\">support that never ends: 1.00x</text>",
@@ -355,7 +393,11 @@ fn interp(pts: &[GroundPoint], g: f64) -> f64 {
 // ---------------------------------------------------------------- data for the page
 
 fn json_f(v: f64) -> String {
-    if v.is_finite() { format!("{:.4}", v) } else { "null".into() }
+    if v.is_finite() {
+        format!("{:.4}", v)
+    } else {
+        "null".into()
+    }
 }
 
 fn json_list(v: &[f64]) -> String {
@@ -372,21 +414,37 @@ struct Headline {
 }
 
 fn data_json(h: &Headline, line: &[Vec<f64>; 3], rows: &[Row], default: (f64, f64), ground: &[GroundPoint]) -> String {
-    let pair = |(v, (lo, hi)): (f64, (f64, f64))| format!("{{\"value\":{},\"lo\":{},\"hi\":{}}}", json_f(v), json_f(lo), json_f(hi));
+    let pair = |(v, (lo, hi)): (f64, (f64, f64))| {
+        format!("{{\"value\":{},\"lo\":{},\"hi\":{}}}", json_f(v), json_f(lo), json_f(hi))
+    };
     let sweep: Vec<String> = rows
         .iter()
         .map(|r| {
             let pts: Vec<String> = r
                 .points
                 .iter()
-                .map(|(l, w, x)| format!("{{\"value\":\"{l}\",\"work\":{},\"wrong\":{}}}", json_f(*w), x.map_or("null".into(), json_f)))
+                .map(|(l, w, x)| {
+                    format!(
+                        "{{\"value\":\"{l}\",\"work\":{},\"wrong\":{}}}",
+                        json_f(*w),
+                        x.map_or("null".into(), json_f)
+                    )
+                })
                 .collect();
             format!("{{\"name\":\"{}\",\"values\":\"{}\",\"points\":[{}]}}", r.name, r.values, pts.join(","))
         })
         .collect();
     let ground: Vec<String> = ground
         .iter()
-        .map(|p| format!("{{\"years\":{},\"ratio\":{},\"lo\":{},\"hi\":{}}}", json_f(p.ground_years), json_f(p.ratio), json_f(p.ci.0), json_f(p.ci.1)))
+        .map(|p| {
+            format!(
+                "{{\"years\":{},\"ratio\":{},\"lo\":{},\"hi\":{}}}",
+                json_f(p.ground_years),
+                json_f(p.ratio),
+                json_f(p.ci.0),
+                json_f(p.ci.1)
+            )
+        })
         .collect();
     let policies = ["fixed TMR", "standby simplex", "shrinking quorum"];
     let table: Vec<String> = (0..3)
@@ -487,9 +545,24 @@ fn sensitivity_chart(t: &Theme, rows: &[Row], default: (f64, f64)) -> String {
 
         for &v in &p.ticks {
             let x = sx(v);
-            write!(s, "<line class=\"grid\" x1=\"{x:.1}\" y1=\"{}\" x2=\"{x:.1}\" y2=\"{}\"/>", top - 14.0, bottom + 12.0).unwrap();
-            let label = if k == 0 { format!("{}x", if v.fract() == 0.0 { format!("{v:.1}") } else { v.to_string() }) } else { format!("{:.0}%", v * 100.0) };
-            write!(s, "<text class=\"tick\" x=\"{x:.1}\" y=\"{}\" text-anchor=\"middle\">{label}</text>", bottom + 28.0).unwrap();
+            write!(
+                s,
+                "<line class=\"grid\" x1=\"{x:.1}\" y1=\"{}\" x2=\"{x:.1}\" y2=\"{}\"/>",
+                top - 14.0,
+                bottom + 12.0
+            )
+            .unwrap();
+            let label = if k == 0 {
+                format!("{}x", if v.fract() == 0.0 { format!("{v:.1}") } else { v.to_string() })
+            } else {
+                format!("{:.0}%", v * 100.0)
+            };
+            write!(
+                s,
+                "<text class=\"tick\" x=\"{x:.1}\" y=\"{}\" text-anchor=\"middle\">{label}</text>",
+                bottom + 28.0
+            )
+            .unwrap();
         }
 
         let d = sx(if k == 0 { default.0 } else { default.1 });
@@ -529,10 +602,18 @@ fn sensitivity_chart(t: &Theme, rows: &[Row], default: (f64, f64)) -> String {
             }
             // Only the extremes of the whole panel get a number.
             if lo == lowest {
-                write!(s, "<text class=\"value\" x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"end\">{}</text>", a - 9.0, y + 4.0, fmt(lo)).unwrap();
+                write!(
+                    s,
+                    "<text class=\"value\" x=\"{:.1}\" y=\"{:.1}\" text-anchor=\"end\">{}</text>",
+                    a - 9.0,
+                    y + 4.0,
+                    fmt(lo)
+                )
+                .unwrap();
             }
             if hi == highest {
-                write!(s, "<text class=\"value\" x=\"{:.1}\" y=\"{:.1}\">{}</text>", b + 9.0, y + 4.0, fmt(hi)).unwrap();
+                write!(s, "<text class=\"value\" x=\"{:.1}\" y=\"{:.1}\">{}</text>", b + 9.0, y + 4.0, fmt(hi))
+                    .unwrap();
             }
         }
     }
@@ -567,11 +648,8 @@ fn main() {
             let work: Vec<f64> = totals.iter().map(Totals::work_vs_tmr).collect();
             let wrong: Vec<f64> = totals.iter().filter_map(Totals::wrong_vs_simplex).collect();
             let values = sw.configs.iter().map(|(l, _)| l.rsplit(' ').next().unwrap().to_string()).collect::<Vec<_>>();
-            let points = values
-                .iter()
-                .zip(&totals)
-                .map(|(v, t)| (v.clone(), t.work_vs_tmr(), t.wrong_vs_simplex()))
-                .collect();
+            let points =
+                values.iter().zip(&totals).map(|(v, t)| (v.clone(), t.work_vs_tmr(), t.wrong_vs_simplex())).collect();
             Row {
                 name: sw.name,
                 values: format!("{} to {}", values.first().unwrap(), values.last().unwrap()),
@@ -592,7 +670,8 @@ fn main() {
         w(shrink) / w(simplex)
     };
     let be = |idx: &[usize]| break_even_years(&r, idx, shrink, tmr).unwrap_or(f64::NAN);
-    let mean = |f: &dyn Fn(&dusk::model::Outcome) -> f64, p: usize| r.iter().map(|o| f(&o[p])).sum::<f64>() / r.len() as f64;
+    let mean =
+        |f: &dyn Fn(&dusk::model::Outcome) -> f64, p: usize| r.iter().map(|o| f(&o[p])).sum::<f64>() / r.len() as f64;
     let headline = Headline {
         work_vs_tmr: work_ratio(&r, shrink, tmr, SEED),
         wrong_vs_simplex: (wrong_share(&all), bootstrap(r.len(), SEED, wrong_share)),
@@ -608,7 +687,8 @@ fn main() {
 
     let dir = Path::new(env!("CARGO_MANIFEST_DIR")).join("docs");
     std::fs::create_dir_all(&dir).expect("create docs/");
-    std::fs::write(dir.join("data.json"), data_json(&headline, &line, &rows, default, &ground)).expect("write data.json");
+    std::fs::write(dir.join("data.json"), data_json(&headline, &line, &rows, default, &ground))
+        .expect("write data.json");
     println!("wrote {}", dir.join("data.json").display());
     for t in [&LIGHT, &DARK] {
         for (stem, svg) in [
@@ -636,7 +716,11 @@ fn main() {
         headline.break_even_years.1 .1,
         interp(&ground, VOYAGER_YEARS)
     );
-    println!("plotted to year {years}; default work vs TMR {:.2}x, wrong vs simplex {:.0}%", default.0, default.1 * 100.0);
+    println!(
+        "plotted to year {years}; default work vs TMR {:.2}x, wrong vs simplex {:.0}%",
+        default.0,
+        default.1 * 100.0
+    );
     for r in &rows {
         println!(
             "{:<22} work {:.2}x-{:.2}x   wrong {:.0}%-{:.0}%",
