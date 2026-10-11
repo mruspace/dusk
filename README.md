@@ -186,7 +186,7 @@ a median life of about 98 years.
 **Deaths can be correlated** [[9]](#references). With probability `p_corr`, a death also kills one
 other processor in service that day, and that death can do the same. This is a
 stand-in for a shared thermal or power fault, or one particle shower hitting
-neighbours.
+neighbors.
 
 **Spares are salvaged.** With `--spares N`, N more processors belong to
 instruments. Each joins the pool when its instrument dies, but it has aged in
@@ -222,6 +222,33 @@ uses for systems that degrade [[10]](#references).
 and the same upsets, drawn from keyed hashes rather than a shared stream. Any
 difference between policies is the policy.
 
+## Checked against the real code
+
+`dusk --bench FILE` replays the bench of
+[mruspace/flight](https://github.com/mruspace/flight) through the model. The
+bench runs the real `quorum` code on three processes, kills replicas at fixed
+ticks and injects upsets at a fixed rate. The check gives the model the same
+deaths, the same upset rate and the same self-check coverage, one tick as one
+day, and compares the mean correct and wrong results.
+
+```sh
+cargo run --release -- --bench ../flight/bench/results/2026-10-11-darwin-arm64.csv
+```
+
+On the published Apple M4 results (10 seeds per row), 17 of 18 rows agree
+within 3 standard errors on both correct and wrong results. The 18th, the
+shrinking quorum's correct results with two replicas lost early at an upset
+rate of 0.01, is 3.4 standard errors low. Its two phases, rerun over 200 seeds,
+matched the model: 40.38 results lost against 40.42 expected with two
+replicas, and 19.17 caught and 0.90 wrong against 19.00 and 1.00 with one.
+
+This checks the **policy model** against the code. It does not calibrate the
+**environment**: the bench sets the upset rate and the failure times itself,
+so it cannot measure them. Those need radiation test or flight data. The bench
+also has faults the model does not: a replica that is stuck on a wrong value.
+On one replica, such a fault gives wrong results until the next known-answer
+test. The model has only processors that die.
+
 ## What this does not claim
 
 The parameters are **illustrative, not calibrated.** They are plausible
@@ -231,11 +258,11 @@ and the sweep shows where it holds.
 
 Other simplifications:
 
-- A day is the unit of work. Nothing inside a day is modelled.
+- A day is the unit of work. Nothing inside a day is modeled.
 - Two or more upsets in a vote are always caught as a split. A real voter can
   be fooled by identical wrong answers, so this slightly flatters every voting
   policy equally.
-- Power, thermal limits, and duty cycling are not modelled. Every processor
+- Power, thermal limits, and duty cycling are not modeled. Every processor
   runs every day.
 - The ground team in `--ground` is perfect: it always diagnoses correctly and
   its command always works. Real anomaly response is slower and less certain,
@@ -275,7 +302,7 @@ GitHub's "Cite this repository" button reads the same from `CITATION.cff`.
 Issues and PRs aren't open to the public on this repo, but we'd love to hear from
 you. Email [contact@mru.space](mailto:contact@mru.space).
 
-## Licence
+## License
 
 Code under [Apache License 2.0](./LICENSE). The **Mru** name and mark are
 trademarks; see [TRADEMARK.md](./TRADEMARK.md).

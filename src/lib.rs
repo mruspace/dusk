@@ -2,6 +2,7 @@
 //! decays. `model` holds the physics and the policies; this file runs them
 //! many times in parallel and holds the sweep that both binaries share.
 
+pub mod bench;
 pub mod model;
 pub mod rng;
 
