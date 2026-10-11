@@ -1,3 +1,4 @@
+use dusk::bench;
 use dusk::model::{Config, Outcome, Policy};
 use dusk::{break_even_years, bootstrap, ground_curve, run_all, sweeps, work_ratio, Totals};
 use std::process::exit;
@@ -5,7 +6,7 @@ use std::process::exit;
 const USAGE: &str = "\
 Monte Carlo of redundancy policies on hardware that only ever decays.
 
-usage: dusk [options] [--sweep | --ground]
+usage: dusk [options] [--sweep | --ground | --bench FILE]
 
   --runs N                 missions per policy          (default 10000)
   --seed N                 base seed                    (default 1)
@@ -21,6 +22,8 @@ usage: dusk [options] [--sweep | --ground]
   --selfcheck-throughput X lone output vs a vote        (default 0.5)
   --sweep                  vary the uncertain parameters instead
   --ground                 compare against TMR with a ground team instead
+  --bench FILE             check the policy model against a bench CSV from
+                           mruspace/flight (bench/results)
 ";
 
 struct Args {
@@ -30,6 +33,7 @@ struct Args {
     threads: usize,
     sweep: bool,
     ground: bool,
+    bench: Option<String>,
 }
 
 fn parse() -> Args {
@@ -40,6 +44,7 @@ fn parse() -> Args {
         threads: std::thread::available_parallelism().map_or(4, |n| n.get()),
         sweep: false,
         ground: false,
+        bench: None,
     };
     let mut it = std::env::args().skip(1);
     while let Some(flag) = it.next() {
@@ -74,6 +79,7 @@ fn parse() -> Args {
             "--p-upset" => a.cfg.p_upset = f(),
             "--coverage" => a.cfg.coverage = f(),
             "--selfcheck-throughput" => a.cfg.selfcheck_throughput = f(),
+            "--bench" => a.bench = Some(v.clone()),
             _ => fail(&format!("unknown option {flag}")),
         }
     }
@@ -234,8 +240,93 @@ fn sweep(a: &Args) {
     }
 }
 
+/// Replay each bench schedule through the model and compare the means.
+fn check_bench(a: &Args, path: &str) {
+    const SAMPLES: u64 = 1000;
+    let text = std::fs::read_to_string(path).unwrap_or_else(|e| fail(&format!("{path}: {e}")));
+    let runs = bench::parse(&text).unwrap_or_else(|e| fail(&format!("{path}: {e}")));
+
+    // groups in file order: one per schedule, upset rate and policy
+    let mut groups: Vec<(bench::Run, Vec<f64>, Vec<f64>)> = Vec::new();
+    for r in runs {
+        let same = |g: &(bench::Run, Vec<f64>, Vec<f64>)| {
+            g.0.schedule == r.schedule && g.0.upset_rate == r.upset_rate && g.0.policy == r.policy
+        };
+        match groups.iter_mut().find(|g| same(g)) {
+            Some(g) => {
+                g.1.push(r.useful);
+                g.2.push(r.wrong);
+            }
+            None => groups.push((r.clone(), vec![r.useful], vec![r.wrong])),
+        }
+    }
+
+    let preds: Vec<Option<bench::Prediction>> = std::thread::scope(|s| {
+        let handles: Vec<_> = groups
+            .iter()
+            .map(|(r, _, _)| {
+                s.spawn(move || {
+                    let policy = if r.policy == "tmr" { Policy::FixedTmr } else { Policy::ShrinkingQuorum };
+                    bench::deaths(&r.faults, r.ticks).map(|d| bench::predict(r, policy, d, SAMPLES, a.seed))
+                })
+            })
+            .collect();
+        handles.into_iter().map(|h| h.join().expect("worker panicked")).collect()
+    });
+
+    println!("bench results: {path}");
+    println!("model: {SAMPLES} upset streams per row, same deaths, upset rate and self-check coverage as the bench");
+    println!();
+    println!(
+        "{:<16} {:>7} {:<7} {:>10} {:>10} {:>7}   {:>7} {:>7} {:>6}",
+        "schedule", "upsets", "policy", "correct", "model", "z", "wrong", "model", "z"
+    );
+    let (mut checked, mut within, mut worst, mut skipped) = (0, 0, 0.0f64, Vec::new());
+    for ((r, useful, wrong), pred) in groups.iter().zip(&preds) {
+        let Some(p) = pred else {
+            if !skipped.contains(&r.schedule) {
+                skipped.push(r.schedule.clone());
+            }
+            continue;
+        };
+        let (bu, bw) = (bench::mean(useful), bench::mean(wrong));
+        let n = useful.len();
+        let zu = bench::Prediction::z(p.useful, p.useful_sd, p.samples, bu, n, bench::PARITY);
+        let zw = bench::Prediction::z(p.wrong, p.wrong_sd, p.samples, bw, n, 0.0);
+        checked += 1;
+        worst = worst.max(zu.abs()).max(zw.abs());
+        if zu.abs() <= 3.0 && zw.abs() <= 3.0 {
+            within += 1;
+        }
+        println!(
+            "{:<16} {:>7} {:<7} {:>10.1} {:>10.1} {:>7.2}   {:>7.2} {:>7.2} {:>6.2}",
+            r.schedule, r.upset_rate, r.policy, bu, p.useful, zu, bw, p.wrong, zw
+        );
+    }
+    println!();
+    println!(
+        "{within} of {checked} rows within 3 standard errors on both correct and wrong results \
+         (model spread; correct results allow half a result of self-check parity)."
+    );
+    if !skipped.is_empty() {
+        println!(
+            "not modeled: {} (stuck, hung or corrupt replicas; the model has only processors that die)",
+            skipped.join(", ")
+        );
+    }
+    // with many rows, one past 3 can be chance; past 4 is a mismatch
+    println!("largest gap: {worst:.2} standard errors. The check fails above 4.");
+    if worst > 4.0 {
+        exit(1);
+    }
+}
+
 fn main() {
     let a = parse();
+    if let Some(path) = &a.bench {
+        check_bench(&a, path);
+        return;
+    }
     if a.runs == 0 || a.cfg.nodes == 0 {
         fail("--runs and --nodes must be at least 1");
     }
