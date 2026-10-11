@@ -1,6 +1,9 @@
 use dusk::bench;
-use dusk::model::{Config, Outcome, Policy};
-use dusk::{bootstrap, break_even_years, ground_curve, run_all, sweeps, work_ratio, Totals};
+use dusk::model::{Config, Outcome, Policy, COLD, SHRINK, SIMPLEX, TMR, UNCHECKED};
+use dusk::{
+    bootstrap, break_even_years, cold_crossing_line, cold_curve, fmt, ground_curve, risk_ci, run_columns, sweep_totals,
+    sweeps, work_ratio, wrong_ratio, COLD_AGINGS,
+};
 use std::process::exit;
 
 const USAGE: &str = "\
@@ -20,6 +23,7 @@ usage: dusk [options] [--sweep | --ground | --bench FILE]
   --p-upset X              bad-result upsets / node-day (default 0.001)
   --coverage X             lone self-check coverage     (default 0.99)
   --selfcheck-throughput X lone output vs a vote        (default 0.5)
+  --cold-aging X           cold spare aging rate 0 to 1 (default: 0.1 and 1.0)
   --sweep                  vary the uncertain parameters instead
   --ground                 compare against TMR with a ground team instead
   --bench FILE             check the policy model against a bench CSV from
@@ -34,6 +38,9 @@ struct Args {
     sweep: bool,
     ground: bool,
     bench: Option<String>,
+    /// Set by --cold-aging. Without it, cold standby is reported at both
+    /// ends of the aging range.
+    cold_aging: Option<f64>,
 }
 
 fn parse() -> Args {
@@ -45,6 +52,7 @@ fn parse() -> Args {
         sweep: false,
         ground: false,
         bench: None,
+        cold_aging: None,
     };
     let mut it = std::env::args().skip(1);
     while let Some(flag) = it.next() {
@@ -80,6 +88,14 @@ fn parse() -> Args {
             "--coverage" => a.cfg.coverage = f(),
             "--selfcheck-throughput" => a.cfg.selfcheck_throughput = f(),
             "--bench" => a.bench = Some(v.clone()),
+            "--cold-aging" => {
+                let g = f();
+                if !(0.0..=1.0).contains(&g) {
+                    fail(&format!("--cold-aging must be from 0 to 1, not {v}"));
+                }
+                a.cold_aging = Some(g);
+                a.cfg.cold_aging = g;
+            }
             _ => fail(&format!("unknown option {flag}")),
         }
     }
@@ -100,10 +116,16 @@ fn pct(sorted: &[f64], p: f64) -> f64 {
     sorted[((p / 100.0) * (sorted.len() - 1) as f64).round() as usize]
 }
 
-fn column(results: &[[Outcome; 3]], p: usize, f: impl Fn(&Outcome) -> f64) -> Vec<f64> {
-    let mut v: Vec<f64> = results.iter().map(|r| f(&r[p])).collect();
+fn column<R: AsRef<[Outcome]>>(results: &[R], p: usize, f: impl Fn(&Outcome) -> f64) -> Vec<f64> {
+    let mut v: Vec<f64> = results.iter().map(|r| f(&r.as_ref()[p])).collect();
     v.sort_by(|a, b| a.total_cmp(b));
     v
+}
+
+/// The spare aging rates to report cold standby at: the user's, or both ends
+/// of the range so that no single guess reads as the result.
+fn cold_agings(a: &Args) -> Vec<f64> {
+    a.cold_aging.map_or(vec![COLD_AGINGS[0], COLD_AGINGS[COLD_AGINGS.len() - 1]], |g| vec![g])
 }
 
 fn report(a: &Args) {
@@ -116,73 +138,110 @@ fn report(a: &Args) {
     );
     println!();
 
-    let r = run_all(c, a.runs, a.seed, a.threads);
+    // Columns: every policy but cold standby, then cold standby at each rate.
+    let agings = cold_agings(a);
+    let r = run_columns(c, a.runs, a.seed, a.threads, &Policy::ALL[..COLD], &agings);
+    let mut names: Vec<String> = Policy::ALL[..COLD].iter().map(|p| p.name().to_string()).collect();
+    names.extend(agings.iter().map(|&g| format!("cold standby, aging {}", fmt::aging(g))));
 
     println!(
-        "{:<17} {:>8} {:>8} {:>8} {:>8}   {:>10} {:>12}",
-        "policy", "useful", "p10", "p50", "p90", "service", "wrong days"
+        "{:<24} {:>8} {:>8} {:>8} {:>8}   {:>10} {:>12} {:>8}",
+        "policy", "useful", "p10", "p50", "p90", "service", "wrong days", "risk"
     );
-    println!("{:<17} {:>8} {:>8} {:>8} {:>8}   {:>10} {:>12}", "", "mean y", "", "", "", "mean y", "mean / run");
-    for (i, p) in Policy::ALL.iter().enumerate() {
+    println!(
+        "{:<24} {:>8} {:>8} {:>8} {:>8}   {:>10} {:>12} {:>8}",
+        "", "mean y", "", "", "", "mean y", "mean / run", "P(>=1)"
+    );
+    let risks: Vec<(f64, (f64, f64))> = (0..names.len()).map(|i| risk_ci(&r, i, a.seed)).collect();
+    for (i, name) in names.iter().enumerate() {
         let useful = column(&r, i, Outcome::useful_years);
         let end = column(&r, i, Outcome::end_years);
         let wrong = column(&r, i, |o| o.wrong_days as f64);
         println!(
-            "{:<17} {:>8.1} {:>8.1} {:>8.1} {:>8.1}   {:>10.1} {:>12.3}",
-            p.name(),
+            "{:<24} {:>8.1} {:>8.1} {:>8.1} {:>8.1}   {:>10.1} {:>12.3} {:>8}",
+            name,
             mean(&useful),
             pct(&useful, 10.0),
             pct(&useful, 50.0),
             pct(&useful, 90.0),
             mean(&end),
-            mean(&wrong)
+            mean(&wrong),
+            fmt::pct1(risks[i].0)
         );
     }
 
-    let (tmr, simplex, shrink) = (0, 1, 2);
     let ratio: Vec<f64> = {
         let mut v: Vec<f64> =
-            r.iter().filter(|o| o[tmr].useful_days > 0.0).map(|o| o[shrink].useful_days / o[tmr].useful_days).collect();
+            r.iter().filter(|o| o[TMR].useful_days > 0.0).map(|o| o[SHRINK].useful_days / o[TMR].useful_days).collect();
         v.sort_by(|a, b| a.total_cmp(b));
         v
     };
     let sum = |p: usize, f: fn(&Outcome) -> f64| r.iter().map(|o| f(&o[p])).sum::<f64>();
     let wrong = |o: &Outcome| o.wrong_days as f64;
-    let ci = |(lo, hi): (f64, f64), f: &dyn Fn(f64) -> String| format!("95% CI {} to {}", f(lo), f(hi));
-    let x = |v: f64| format!("{v:.2}x");
-    let pc = |v: f64| format!("{:.0}%", 100.0 * v);
-    let yr = |v: f64| format!("{v:.0}");
+    let ci = |v: (f64, f64), f: fn(f64) -> String| format!("95% CI {}", fmt::range(v, f));
+
+    // Risk and the price of a wrong result belong together.
+    println!();
+    println!("risk: share of missions with at least one wrong result (95% CI)");
+    for (name, (_, interval)) in names.iter().zip(&risks) {
+        println!("  {:<24} {}", name, fmt::range(*interval, fmt::pct1));
+    }
+    let all: Vec<usize> = (0..r.len()).collect();
+    if let Some(be) = break_even_years(&r, &all, SHRINK, TMR) {
+        let be_ci = bootstrap(r.len(), a.seed, |idx| break_even_years(&r, idx, SHRINK, TMR).unwrap_or(f64::NAN));
+        println!(
+            "break-even: fixed TMR comes out ahead only if one wrong result costs more than {} years of useful work ({})",
+            fmt::years(be),
+            ci(be_ci, fmt::years)
+        );
+    }
 
     println!();
-    let (vs_tmr, vs_tmr_ci) = work_ratio(&r, shrink, tmr, a.seed);
+    let (vs_tmr, vs_tmr_ci) = work_ratio(&r, SHRINK, TMR, a.seed);
     println!(
         "shrinking quorum vs fixed TMR: {} the useful work in total ({}); per mission median {:.2}x (p10 {:.2}x, p90 {:.2}x)",
-        x(vs_tmr),
-        ci(vs_tmr_ci, &x),
+        fmt::x(vs_tmr),
+        ci(vs_tmr_ci, fmt::x),
         pct(&ratio, 50.0),
         pct(&ratio, 10.0),
         pct(&ratio, 90.0)
     );
-    let ws = sum(simplex, wrong);
-    if ws > 0.0 {
-        let share = |idx: &[usize]| {
-            let w = |p: usize| idx.iter().map(|&i| r[i][p].wrong_days as f64).sum::<f64>();
-            w(shrink) / w(simplex)
-        };
-        println!(
-            "shrinking quorum vs standby simplex: {:.0}% of the useful work, {:.0}% of the wrong results ({})",
-            100.0 * sum(shrink, |o| o.useful_days) / sum(simplex, |o| o.useful_days),
-            100.0 * sum(shrink, wrong) / ws,
-            ci(bootstrap(r.len(), a.seed, share), &pc)
-        );
+    // The unchecked share is near 1%, so it gets two decimal places.
+    type Share = (usize, &'static str, fn(f64) -> String);
+    let shares: [Share; 2] =
+        [(SIMPLEX, "standby simplex", fmt::pct), (UNCHECKED, "TMR + unchecked simplex", fmt::pct2)];
+    for (other, label, share_fmt) in shares {
+        if sum(other, wrong) > 0.0 {
+            let (share, share_ci) = wrong_ratio(&r, SHRINK, other, a.seed);
+            println!(
+                "shrinking quorum vs {label}: {} of the useful work, {} of the wrong results ({})",
+                fmt::pct(sum(SHRINK, |o| o.useful_days) / sum(other, |o| o.useful_days)),
+                share_fmt(share),
+                ci(share_ci, share_fmt)
+            );
+        }
     }
-    let all: Vec<usize> = (0..r.len()).collect();
-    if let Some(be) = break_even_years(&r, &all, shrink, tmr) {
-        let be_ci = bootstrap(r.len(), a.seed, |idx| break_even_years(&r, idx, shrink, tmr).unwrap_or(f64::NAN));
-        println!(
-            "break-even: fixed TMR comes out ahead only if one wrong result costs more than {be:.0} years of useful work ({})",
-            ci(be_ci, &yr)
-        );
+    let gains: Vec<(f64, (f64, f64))> = (0..agings.len()).map(|k| work_ratio(&r, SHRINK, COLD + k, a.seed)).collect();
+    match (&agings[..], &gains[..]) {
+        ([lo, hi], [g_lo, g_hi]) => println!(
+            "shrinking quorum vs cold standby: {} the useful work at spare aging {} ({}), {} at spare aging {} ({})",
+            fmt::x(g_lo.0),
+            fmt::aging(*lo),
+            ci(g_lo.1, fmt::x),
+            fmt::x(g_hi.0),
+            fmt::aging(*hi),
+            ci(g_hi.1, fmt::x)
+        ),
+        _ => {
+            for (g, gain) in agings.iter().zip(&gains) {
+                println!(
+                    "shrinking quorum vs cold standby, aging {}: {} the useful work ({})",
+                    fmt::aging(*g),
+                    fmt::x(gain.0),
+                    ci(gain.1, fmt::x)
+                );
+            }
+        }
     }
 }
 
@@ -208,27 +267,63 @@ fn ground(a: &Args) {
     }
 }
 
-/// Vary each parameter the model cannot pin down and report the two numbers
-/// that matter: extra work over fixed TMR, and wrong results against simplex.
+/// Vary each parameter the model cannot pin down and report the numbers
+/// that matter: extra work over fixed TMR, wrong results against simplex,
+/// and work against cold standby. Then cold standby by spare aging rate.
 fn sweep(a: &Args) {
     let runs = a.runs;
+    let agings = cold_agings(a);
     println!("{runs} missions per row, seed {}; unlisted parameters at their defaults", a.seed);
     println!();
-    println!("{:<28} {:>12} {:>14} {:>14}", "varied", "work vs TMR", "wrong/mission", "wrong vs simplex");
+    print!("{:<28} {:>12} {:>14} {:>14}", "varied", "work vs TMR", "wrong/mission", "wrong vs simplex");
+    for &g in &agings {
+        print!(" {:>18}", format!("work vs cold {}", fmt::aging(g)));
+    }
+    println!();
 
     for sweep in sweeps(&a.cfg) {
         for (label, cfg) in sweep.configs {
-            let t = Totals::of(&run_all(&cfg, runs, a.seed, a.threads));
-            let vs_simplex = t.wrong_vs_simplex().map_or("-".into(), |x| format!("{:.0}%", 100.0 * x));
-            println!(
+            let t = sweep_totals(&cfg, runs, a.seed, a.threads, &agings);
+            let vs_simplex = t.wrong_vs_simplex().map_or("-".into(), fmt::pct);
+            print!(
                 "{:<28} {:>11.2}x {:>14.3} {:>14}",
                 label,
                 t.work_vs_tmr(),
-                t.wrong_days[2] / runs as f64,
+                t.wrong_days[SHRINK] / runs as f64,
                 vs_simplex
             );
+            for k in 0..agings.len() {
+                // sweep_totals puts cold standby right after the first three
+                print!(" {:>18}", fmt::x(t.work_vs(SHRINK, 3 + k)));
+            }
+            println!();
         }
     }
+
+    println!();
+    println!("cold standby by spare aging rate (1.0: a cold spare ages as fast as a powered one)");
+    println!();
+    let pts = cold_curve(&a.cfg, runs, a.seed, a.threads, &COLD_AGINGS);
+    println!(
+        "{:<6} {:>8} {:>8} {:>14} {:>7}   {:<24} vs shrinking quorum (95% CI)",
+        "aging", "useful", "service", "wrong/mission", "risk", "work vs TMR (95% CI)"
+    );
+    println!("{:<6} {:>8} {:>8}", "", "mean y", "mean y");
+    let with_ci = |(v, interval): (f64, (f64, f64))| format!("{} ({})", fmt::x(v), fmt::range(interval, fmt::x));
+    for p in &pts {
+        println!(
+            "{:<6} {:>8.1} {:>8.1} {:>14.3} {:>7}   {:<24} {}",
+            fmt::aging(p.aging),
+            p.useful_years,
+            p.service_years,
+            p.wrong_per_mission,
+            fmt::pct1(p.risk.0),
+            with_ci(p.vs_tmr),
+            with_ci(p.vs_shrink)
+        );
+    }
+    println!();
+    println!("{}", cold_crossing_line(&pts));
 }
 
 /// Replay each bench schedule through the model and compare the means.
@@ -252,13 +347,26 @@ fn check_bench(a: &Args, path: &str) {
         }
     }
 
-    let preds: Vec<Option<bench::Prediction>> = std::thread::scope(|s| {
+    // Whether the model can replay a group, and its prediction if it can.
+    enum Fit {
+        Modeled(bench::Prediction),
+        Faults,
+        Policy,
+    }
+    let preds: Vec<Fit> = std::thread::scope(|s| {
         let handles: Vec<_> = groups
             .iter()
             .map(|(r, _, _)| {
                 s.spawn(move || {
-                    let policy = if r.policy == "tmr" { Policy::FixedTmr } else { Policy::ShrinkingQuorum };
-                    bench::deaths(&r.faults, r.ticks).map(|d| bench::predict(r, policy, d, SAMPLES, a.seed))
+                    let policy = match r.policy.as_str() {
+                        "tmr" => Policy::FixedTmr,
+                        "shrink" => Policy::ShrinkingQuorum,
+                        _ => return Fit::Policy,
+                    };
+                    match bench::deaths(&r.faults, r.ticks) {
+                        Some(d) => Fit::Modeled(bench::predict(r, policy, d, SAMPLES, a.seed)),
+                        None => Fit::Faults,
+                    }
                 })
             })
             .collect();
@@ -273,12 +381,22 @@ fn check_bench(a: &Args, path: &str) {
         "schedule", "upsets", "policy", "correct", "model", "z", "wrong", "model", "z"
     );
     let (mut checked, mut within, mut worst, mut skipped) = (0, 0, 0.0f64, Vec::new());
+    let mut other_policies: Vec<String> = Vec::new();
     for ((r, useful, wrong), pred) in groups.iter().zip(&preds) {
-        let Some(p) = pred else {
-            if !skipped.contains(&r.schedule) {
-                skipped.push(r.schedule.clone());
+        let p = match pred {
+            Fit::Modeled(p) => p,
+            Fit::Faults => {
+                if !skipped.contains(&r.schedule) {
+                    skipped.push(r.schedule.clone());
+                }
+                continue;
             }
-            continue;
+            Fit::Policy => {
+                if !other_policies.contains(&r.policy) {
+                    other_policies.push(r.policy.clone());
+                }
+                continue;
+            }
         };
         let (bu, bw) = (bench::mean(useful), bench::mean(wrong));
         let n = useful.len();
@@ -304,6 +422,9 @@ fn check_bench(a: &Args, path: &str) {
             "not modeled: {} (stuck, hung or corrupt replicas; the model has only processors that die)",
             skipped.join(", ")
         );
+    }
+    for policy in &other_policies {
+        println!("not modeled: policy {policy}");
     }
     // with many rows, one past 3 can be chance; past 4 is a mismatch
     println!("largest gap: {worst:.2} standard errors. The check fails above 4.");
