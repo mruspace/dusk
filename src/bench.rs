@@ -125,7 +125,7 @@ pub fn predict(run: &Run, policy: Policy, dies: [u64; 3], samples: u64, seed: u6
     let units = dies.iter().map(|&d| Unit { joins: 0, dies: d }).collect::<Vec<_>>();
     let (mut u, mut u2, mut w, mut w2) = (0.0, 0.0, 0.0, 0.0);
     for s in 0..samples {
-        let h = History { seed: rng::mix(seed.wrapping_add(s)), units: units.clone() };
+        let h = History::from_units(rng::mix(seed.wrapping_add(s)), units.clone());
         let o = simulate(&cfg, &h, policy);
         let wrong = o.wrong_days as f64 * cfg.selfcheck_throughput;
         u += o.useful_days;

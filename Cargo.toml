@@ -7,6 +7,7 @@ description = "Monte Carlo of redundancy policies on hardware that only ever dec
 repository = "https://github.com/mruspace/dusk"
 homepage = "https://mru.space"
 publish = false
+default-run = "dusk"
 
 [dependencies]
 

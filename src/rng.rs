@@ -29,7 +29,7 @@ impl SplitMix64 {
     }
 }
 
-/// The SplitMix64 finaliser. A good 64-bit mixer on its own.
+/// The SplitMix64 finalizer. A good 64-bit mixer on its own.
 pub fn mix(mut z: u64) -> u64 {
     z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
     z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
@@ -51,7 +51,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn unit_is_in_range_and_centred() {
+    fn unit_is_in_range_and_centered() {
         let mut r = SplitMix64::new(1);
         let n = 200_000;
         let mut sum = 0.0;
