@@ -143,15 +143,11 @@ fn smooth_segments(p: &[(f64, f64)]) -> String {
 
 /// 10000 as "10,000".
 fn thousands(n: usize) -> String {
+    // Groups of three digits from the right, joined by commas: 10000 -> "10,000".
     let s = n.to_string();
-    let mut out = String::new();
-    for (i, c) in s.chars().enumerate() {
-        if i > 0 && (s.len() - i) % 3 == 0 {
-            out.push(',');
-        }
-        out.push(c);
-    }
-    out
+    let groups: Vec<&str> =
+        s.as_bytes().rchunks(3).rev().map(|g| std::str::from_utf8(g).expect("ASCII digits")).collect();
+    groups.join(",")
 }
 
 /// A whole monotone-cubic path through `p`.
