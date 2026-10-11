@@ -45,6 +45,9 @@
       --s-tmr: #6f6f78;
       --s-simplex: #a3a3aa;
       --s-shrink: #3a4a5a;
+      /* The two newer baselines reuse a baseline grey, dashed. */
+      --s-unchecked: #6f6f78;
+      --s-cold: #a3a3aa;
       --wash: 0.10;
       --maxw: 46rem;
       --serif: "Charter", "Source Serif 4", "Iowan Old Style", "Palatino Linotype", Palatino, Georgia, "Times New Roman", serif;
@@ -64,6 +67,8 @@
         --s-tmr: #8f8f8a;
         --s-simplex: #5c5c60;
         --s-shrink: #9fb4cb;
+        --s-unchecked: #8f8f8a;
+        --s-cold: #5c5c60;
         --wash: 0.14;
       }
     }
@@ -126,8 +131,8 @@
     .lede { color: var(--ink-soft); }
     code, .mono { font-family: var(--mono); font-size: .88em; }
 
-    /* The three numbers the page leads with. */
-    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr)); gap: 1rem; margin: 2rem 0 1rem; }
+    /* The numbers the page leads with. */
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: 1rem; margin: 2rem 0 1rem; }
     .stat { border-top: 1px solid var(--rule); padding-top: .9rem; }
     .stat .v { font-family: var(--display); font-weight: 500; font-size: 2.35rem; line-height: 1.1; color: var(--ink); }
     .stat .l { font-size: 1rem; line-height: 1.45; color: var(--ink-soft); margin-top: .35rem; }
@@ -147,7 +152,7 @@
     .chart .lbl { font-family: var(--serif); font-size: 13px; fill: var(--ink-soft); }
     .chart .row { font-family: var(--serif); font-size: 14px; fill: var(--ink); }
     .chart .val { fill: var(--ink-soft); font-size: 11.5px; }
-    /* A halo in the paper colour, so gridlines never run through a label. */
+    /* A halo in the paper color, so gridlines never run through a label. */
     .chart .row, .chart .val, .chart .halo { paint-order: stroke; stroke: var(--bg); stroke-width: 4px; stroke-linejoin: round; }
     .chart .grid { stroke: var(--rule); stroke-width: 1; }
     .tip {
@@ -238,19 +243,24 @@
         <p class="byline">Will Binns &middot; September 2026 &middot; companion to the <a href="https://doi.org/10.5281/zenodo.20579438">Mru whitepaper</a></p>
       </header>
 
-      <p class="lede">Classic triple modular redundancy<sup class="cite"><a href="#ref-1">1</a>,<a href="#ref-2">2</a>,<a href="#ref-3">3</a></sup> has a fixed threshold. Three processors vote, two can still detect a disagreement, and one cannot outvote anything, so the system stops. With no repairs and no ground team in reach, that throws away the last processor&rsquo;s whole remaining life.</p>
-      <p class="lede">The <a href="https://mru.space/mru-whitepaper.pdf">Mru whitepaper</a><sup class="cite"><a href="#ref-4">4</a></sup> proposes a <strong>shrinking quorum</strong> instead: vote while three processors are alive, compare while two are, and self-check on one. Falling back from TMR to simplex is not new. The question here is what it is worth when no ground team can command it. dusk simulates <span data-k="runs">10,000</span> missions and plays each policy against the same failing hardware.</p>
+      <p class="lede">Classic triple modular redundancy<sup class="cite"><a href="#ref-1">1</a>,<a href="#ref-2">2</a>,<a href="#ref-3">3</a></sup> has a fixed threshold. Three processors vote, two can still detect a disagreement, and one cannot outvote anything, so the system stops. With no repairs and no ground team in reach, that throws away the last processor's whole remaining life.</p>
+      <p class="lede">The <a href="https://mru.space/mru-whitepaper.pdf">Mru whitepaper</a><sup class="cite"><a href="#ref-4">4</a></sup> proposes a <strong>shrinking quorum</strong> instead: vote while three processors are alive, compare while two are, and self-check on one. Falling back from TMR to simplex is not new. The question here is what it is worth when no ground team can command it. dusk simulates <span data-k="runs">10,000</span> missions and plays five policies against the same failing hardware.</p>
 
       <div class="stats" aria-label="Headline results">
         <div class="stat">
           <div class="v" data-k="work">1.34x</div>
-          <div class="l">the useful work of fixed TMR, with no ground team</div>
+          <div class="l">the useful work of fixed TMR, with no ground team after launch (<a href="#ground-help">1.00x</a> if support never ends)</div>
           <div class="ci" data-k="work-ci"></div>
         </div>
         <div class="stat">
           <div class="v" data-k="fewer">59%</div>
           <div class="l">fewer wrong results than standby simplex</div>
           <div class="ci" data-k="fewer-ci"></div>
+        </div>
+        <div class="stat">
+          <div class="v" data-k="risk">20.1%</div>
+          <div class="l">of missions get at least one wrong result (fixed TMR: <span data-k="risk-tmr">0.0%</span>)</div>
+          <div class="ci" data-k="risk-ci"></div>
         </div>
         <div class="stat">
           <div class="v" data-k="be">136 y</div>
@@ -261,21 +271,23 @@
 
       <figure aria-labelledby="f1-t">
         <p class="fig-title" id="f1-t">Useful output over the mission</p>
-        <p class="fig-sub">Mean over <span data-k="runs">10,000</span> missions. 100% is a full voting set working every day. The shaded area is the shrinking quorum&rsquo;s total useful work.</p>
+        <p class="fig-sub">Mean over <span data-k="runs">10,000</span> missions. 100% is a full voting set working every day. The shaded area is the shrinking quorum's total useful work.</p>
         <ul class="legend">
           <li><i style="background:var(--s-shrink)"></i>shrinking quorum (Mru)</li>
           <li><i style="background:var(--s-tmr)"></i>fixed TMR</li>
           <li><i style="background:var(--s-simplex)"></i>standby simplex</li>
+          <li><i style="background:repeating-linear-gradient(90deg, var(--s-unchecked) 0 6px, transparent 6px 10px)"></i>TMR + unchecked simplex</li>
+          <li><i style="background:repeating-linear-gradient(90deg, var(--s-cold) 0 2px, transparent 2px 6px)"></i><span>cold standby (spare aging <span data-k="cold-aging">0.3</span>)</span></li>
         </ul>
-        <div class="chart" id="timeline" tabindex="0" role="img" aria-label="Mean useful output by mission year for three policies. Fixed TMR falls to zero first. Standby simplex runs at about half rate. The shrinking quorum tracks TMR while it can vote, then continues at half rate and encloses the largest area.">
+        <div class="chart" id="timeline" tabindex="0" role="img" aria-label="Mean useful output by mission year for five policies. Fixed TMR falls to zero first. Standby simplex runs at about half rate. The shrinking quorum tracks TMR while it can vote, then continues at half rate. TMR + unchecked simplex tracks TMR, then continues at full rate with no self-check. Cold standby runs at half rate for longer than standby simplex.">
           <noscript><img src="output-light.svg" alt="" width="760"></noscript>
         </div>
         <details><summary>Show the numbers</summary><div class="table-scroll"><table id="timeline-table"></table></div></details>
       </figure>
 
-      <p>The shrinking quorum matches fixed TMR while three processors survive. It pulls ahead once TMR starts to stop and keeps working long after. It never does less on any single mission, because the two are identical until TMR stops. The cost is a few wrong results in the single-processor tail, which TMR never lives long enough to make.</p>
+      <p>The shrinking quorum matches fixed TMR while three processors survive. It pulls ahead once TMR starts to stop and keeps working long after. By construction it never does less on any single mission: the two are identical until TMR stops, and a test checks this over 200 seeds. The cost is a few wrong results in the single-processor tail, which TMR never lives long enough to make.</p>
 
-      <h2>When the ground can help</h2>
+      <h2 id="ground-help">When the ground can help</h2>
       <p>Real spacecraft do not run TMR alone. When a string fails, a ground team diagnoses it and commands a fallback by hand. Voyager, launched in 1977, still has that team: it now switches off instruments to live within a power supply that falls about 4 watts a year<sup class="cite"><a href="#ref-5">5</a></sup>. Interstellar Probe is designed to last at least 50 years<sup class="cite"><a href="#ref-6">6</a></sup>. So the fair baseline is TMR plus a ground team that switches it to self-checking simplex, once it loses its majority, for as long as support lasts.</p>
 
       <figure aria-labelledby="f2-t">
@@ -289,7 +301,26 @@
 
       <ul class="plain">
         <li><strong>Answer time barely matters.</strong> A fallback 1 day or 6 months after it is needed gives the same result to two decimals. The lost days are small next to decades of single-processor life.</li>
-        <li><strong>What matters is whether anyone is still there.</strong> If ground support never ends, autonomy adds nothing to throughput, because the ground does the same thing by hand. The whole gain comes from the years after support ends. With <span data-k="voyager-years">49</span> years of support (Voyager&rsquo;s so far) against a 98-year median hardware life, it is still <span data-k="voyager">1.25x</span>. The ratio of the two is what counts: shorter-lived hardware moves the curve left. With a 60-year Weibull scale, 50 years of support leaves 1.10x instead of 1.25x.</li>
+        <li><strong>What matters is whether anyone is still there.</strong> If ground support never ends, autonomy adds nothing to throughput, because the ground does the same thing by hand. The whole gain comes from the years after support ends. With <span data-k="voyager-years">49</span> years of support (Voyager's so far) against a 98-year median hardware life, it is still <span data-k="voyager">1.25x</span>. The ratio of the two is what counts: shorter-lived hardware moves the curve left. With a 60-year Weibull scale, 50 years of support leaves 1.10x instead of 1.25x.</li>
+      </ul>
+
+      <h2>Two more baselines</h2>
+      <p><strong>TMR + unchecked simplex</strong> falls back on its own, as the shrinking quorum does, but its last processor does not check itself. It runs at full rate, so it does more useful work: the shrinking quorum does <span data-k="work-vs-unchecked">80%</span> of it. But every upset on that last processor is a wrong result, and the shrinking quorum makes <span data-k="wrong-vs-unchecked">1.00%</span> as many. This baseline isolates what self-check is worth.</p>
+      <p><strong>Cold standby</strong> is the nearest model here of dual-string with autonomous switchover. One processor is powered and the others are not. Each spare is switched on in turn when the active one dies, and the active one self-checks. It runs on the same three processors as TMR. An unpowered spare ages more slowly than a powered one, but nobody knows by how much, so the chart sweeps that rate.</p>
+
+      <figure aria-labelledby="f5-t">
+        <p class="fig-title" id="f5-t">Cold standby, by how fast an unpowered spare ages</p>
+        <p class="fig-sub">Useful work vs fixed TMR on the same hardware. At 1.0 a cold spare ages as fast as a powered one, which is standby simplex. The aging rate is swept, not measured. Band: 95% interval.</p>
+        <div class="chart" id="cold-aging" tabindex="0" role="img" aria-label="Cold standby's useful work relative to fixed TMR falls from about 1.46x when a spare ages at 0.1 of the powered rate to 0.84x at 1.0. It crosses the shrinking quorum's 1.34x at an aging rate of about 0.20.">
+          <noscript><img src="cold-aging-light.svg" alt="" width="760"></noscript>
+        </div>
+        <details><summary>Show the numbers</summary><div class="table-scroll"><table id="cold-table"></table></div></details>
+      </figure>
+
+      <ul class="plain">
+        <li><strong>Where the shrinking quorum loses on work.</strong> If a cold spare ages at less than about <span data-k="cold-crossing">0.20</span> of the powered rate, cold standby does more useful work. At 0.1 the shrinking quorum does <span data-k="work-vs-cold-01">0.92x</span> of it.</li>
+        <li><strong>Where it wins.</strong> Above that rate, the shrinking quorum does more, up to <span data-k="work-vs-cold-10">1.60x</span> at 1.0. At every rate, cold standby has more missions with a wrong result, because it never votes: <span data-k="risk-cold-01">61.3%</span> at 0.1 and <span data-k="risk-cold-10">43.2%</span> at 1.0, against <span data-k="risk-shrink">20.1%</span>.</li>
+        <li><strong>With two processors</strong>, the true two-string case, the shrinking quorum does <span data-k="nodes2-01">1.05x</span> the useful work of cold standby at 0.1 and <span data-k="nodes2-10">1.49x</span> at 1.0.</li>
       </ul>
 
       <h2>The model</h2>
@@ -299,20 +330,20 @@
         <tr><td>Processors at launch</td><td>3</td><td>the voting set</td></tr>
         <tr><td>Lifetime</td><td>Weibull<sup class="cite"><a href="#ref-8">8</a></sup> 1.5, 125 y</td><td>shape above 1 means wear-out; median life about 98 years</td></tr>
         <tr><td>Correlated deaths</td><td>0.1</td><td>chance a death also kills one other processor that day, which can cascade<sup class="cite"><a href="#ref-9">9</a></sup></td></tr>
-        <tr><td>Upsets</td><td>1 in 1,000</td><td>per processor per day: a transient fault that gets past EDAC and corrupts that day&rsquo;s result</td></tr>
-        <tr><td>Self-check coverage</td><td>99%</td><td>share of a lone processor&rsquo;s upsets it catches</td></tr>
+        <tr><td>Upsets</td><td>1 in 1,000</td><td>per processor per day: a transient fault that gets past EDAC and corrupts that day's result</td></tr>
+        <tr><td>Self-check coverage</td><td>99%</td><td>share of a lone processor's upsets it catches</td></tr>
         <tr><td>Self-check throughput</td><td>50%</td><td>a lone processor checks itself by doing the work twice</td></tr>
         <tr><td>Salvaged spares</td><td>0</td><td>processors reclaimed from dead instruments</td></tr>
         <tr><td>Horizon</td><td>1,000 y</td><td>every run ends well before it</td></tr>
       </table></div>
-      <p><strong>Useful work</strong> is days of correct output, weighted by throughput and summed over the whole mission: the accomplishment measure performability analysis uses for systems that degrade<sup class="cite"><a href="#ref-10">10</a></sup>. A <strong>wrong result</strong> (an undetected error) is a day of output nobody knew was bad. Intervals are 95% paired bootstrap intervals over whole missions<sup class="cite"><a href="#ref-11">11</a></sup>. Curves are monotone cubics, which cannot overshoot the data<sup class="cite"><a href="#ref-12">12</a></sup>.</p>
+      <p><strong>Useful work</strong> is days of correct output, weighted by throughput and summed over the whole mission: the accomplishment measure performability analysis uses for systems that degrade<sup class="cite"><a href="#ref-10">10</a></sup>. A <strong>wrong result</strong> (an undetected error) is a day of output nobody knew was bad. Only a lone processor makes one. <strong>Risk</strong> is the share of missions with at least one wrong result. <strong>Service</strong> runs to the first day the policy can never produce output again. Intervals are 95% paired bootstrap intervals over whole missions<sup class="cite"><a href="#ref-11">11</a></sup>. Curves are monotone cubics, which cannot overshoot the data<sup class="cite"><a href="#ref-12">12</a></sup>.</p>
 
       <h2>How much the result depends on the assumptions</h2>
       <p>The parameters are plausible orders of magnitude, not values fitted to flight data. So each one the model cannot pin down is varied on its own, with the rest at default, over <span data-k="sweep-runs">10,000</span> missions per value.</p>
 
       <figure aria-labelledby="f3-t">
         <p class="fig-title" id="f3-t">Useful work vs fixed TMR</p>
-        <p class="fig-sub">Higher is better; 1.0x is no gain. A line spans the results across that parameter&rsquo;s values; the vertical rule is the default run.</p>
+        <p class="fig-sub">Higher is better; 1.0x is no gain. A line spans the results across that parameter's values; the vertical rule is the default run.</p>
         <div class="chart" id="sweep-work" tabindex="0" role="img" aria-label="Across every parameter varied, the shrinking quorum's useful work stays between about 1.1x and 1.7x that of fixed TMR.">
           <noscript><img src="sensitivity-light.svg" alt="" width="760"></noscript>
         </div>
@@ -322,11 +353,11 @@
         <p class="fig-sub">Lower is better; 100% is no gain.</p>
         <div class="chart" id="sweep-wrong" tabindex="0" role="img" aria-label="Across every parameter varied, the shrinking quorum makes between about 18% and 53% of standby simplex's wrong results."></div>
         <details><summary>Show the numbers</summary><div class="table-scroll"><table id="sweep-table"></table></div>
-          <p>At an upset rate of 1e-5 there are only about 20 wrong results across all 10,000 missions, so that row&rsquo;s wrong-result share is noisy. Treat it as a rough figure.</p></details>
+          <p>At an upset rate of 1e-5 there are only about 20 wrong results across all 10,000 missions, so that row's wrong-result share is noisy. Treat it as a rough figure.</p></details>
       </figure>
 
-      <h2>All three policies</h2>
-      <p>Means over the same <span data-k="runs">10,000</span> missions. Years are mission years.</p>
+      <h2>All five policies</h2>
+      <p>Means over the same <span data-k="runs">10,000</span> missions. Years are mission years. Cold standby is shown at both ends of its spare aging range. Risk is the share of missions with at least one wrong result.</p>
       <div class="table-scroll"><table id="policy-table"></table></div>
 
       <h2>What this does not claim</h2>
@@ -335,6 +366,7 @@
         <li>The ground team is perfect: it always diagnoses correctly and its command always works. Real anomaly response is slower and less certain, so this flatters the ground.</li>
         <li>A day is the unit of work. Power, thermal limits, and duty cycling are not modeled.</li>
         <li>Two or more upsets in a vote are always caught as a split, which slightly flatters every voting policy equally.</li>
+        <li>The cold spare aging rate is a sweep, not a measured value. Cold standby keeps the correlated deaths of the powered history, so it slightly under-correlates.</li>
       </ul>
 
       <h2>Run it yourself</h2>
@@ -344,7 +376,8 @@ cd dusk
 cargo run --release              # the default scenario
 cargo run --release -- --ground  # against TMR with a ground team
 cargo run --release -- --ground --scale-years 60  # shorter-lived hardware
-cargo run --release -- --sweep   # sensitivity</code></pre>
+cargo run --release -- --sweep   # sensitivity, and cold standby by aging rate
+cargo run --release -- --cold-aging 0.5  # cold standby at one aging rate</code></pre>
       <div class="cta-row">
         <a class="btn btn-primary" href="https://github.com/mruspace/dusk">Code</a>
         <a class="btn" href="https://mru.space/mru-whitepaper.pdf">Paper</a>
@@ -366,7 +399,7 @@ cargo run --release -- --sweep   # sensitivity</code></pre>
         <li id="ref-3">D. P. Siewiorek and R. S. Swarz, <i>Reliable Computer Systems: Design and Evaluation</i>, 3rd ed. A K Peters, 1998.</li>
         <li id="ref-4">W. Binns, &ldquo;Mru: A Fault-Tolerant Operating System for Thousand-Year Autonomous Operation,&rdquo; 2026. <a href="https://doi.org/10.5281/zenodo.20579438">doi:10.5281/zenodo.20579438</a></li>
         <li id="ref-5">NASA Jet Propulsion Laboratory, &ldquo;NASA Turns Off 2 Voyager Science Instruments to Extend Mission,&rdquo; March 5, 2025. <a href="https://www.jpl.nasa.gov/news/nasa-turns-off-two-voyager-science-instruments-to-extend-mission/">jpl.nasa.gov</a></li>
-        <li id="ref-6">P. C. Brandt, E. A. Provornikova, et al., &ldquo;Interstellar Probe: Humanity&rsquo;s Exploration of the Galaxy Begins,&rdquo; <i>Acta Astronautica</i>, vol. 199, pp. 364&ndash;373, 2022. <a href="https://doi.org/10.1016/j.actaastro.2022.07.011">doi:10.1016/j.actaastro.2022.07.011</a></li>
+        <li id="ref-6">P. C. Brandt, E. A. Provornikova, et al., &ldquo;Interstellar Probe: Humanity's Exploration of the Galaxy Begins,&rdquo; <i>Acta Astronautica</i>, vol. 199, pp. 364&ndash;373, 2022. <a href="https://doi.org/10.1016/j.actaastro.2022.07.011">doi:10.1016/j.actaastro.2022.07.011</a></li>
         <li id="ref-7">M.-C. Hsueh, T. K. Tsai, and R. K. Iyer, &ldquo;Fault Injection Techniques and Tools,&rdquo; <i>Computer</i>, vol. 30, no. 4, pp. 75&ndash;82, 1997.</li>
         <li id="ref-8">W. Weibull, &ldquo;A Statistical Distribution Function of Wide Applicability,&rdquo; <i>Journal of Applied Mechanics</i>, vol. 18, no. 3, pp. 293&ndash;297, 1951.</li>
         <li id="ref-9">A. Avi&zcaron;ienis, J.-C. Laprie, B. Randell, and C. Landwehr, &ldquo;Basic Concepts and Taxonomy of Dependable and Secure Computing,&rdquo; <i>IEEE Transactions on Dependable and Secure Computing</i>, vol. 1, no. 1, pp. 11&ndash;33, 2004.</li>
@@ -391,11 +424,20 @@ cargo run --release -- --sweep   # sensitivity</code></pre>
     const css = (name) => getComputedStyle(document.documentElement).getPropertyValue(name).trim();
     const fmtX = (v) => v.toFixed(2) + "x";
     const fmtPct = (v) => Math.round(v * 100) + "%";
+    const fmtPct1 = (v) => (v * 100).toFixed(1) + "%";
     const SERIES = [
       { key: "shrink", name: "shrinking quorum", color: "--s-shrink" },
       { key: "tmr", name: "fixed TMR", color: "--s-tmr" },
       { key: "simplex", name: "standby simplex", color: "--s-simplex" },
+      { key: "unchecked", name: "TMR + unchecked simplex", color: "--s-unchecked", dash: "6 4" },
+      { key: "cold", name: "cold standby", color: "--s-cold", dash: "2 4" },
     ];
+    // A legend or tooltip key that shows the line's dashes.
+    const keyBg = (ser) => {
+      if (!ser.dash) return `var(${ser.color})`;
+      const [on, off] = ser.dash.split(" ").map(Number);
+      return `repeating-linear-gradient(90deg, var(${ser.color}) 0 ${on}px, transparent ${on}px ${on + off}px)`;
+    };
 
     function svg(tag, attrs, parent) {
       const e = document.createElementNS(NS, tag);
@@ -408,7 +450,7 @@ cargo run --release -- --sweep   # sensitivity</code></pre>
       t.textContent = str;
       return t;
     }
-    // A paper-coloured box behind a label, so gridlines stop at its edges.
+    // A paper-colored box behind a label, so gridlines stop at its edges.
     function backed(t) {
       const b = t.getBBox();
       const r = svg("rect", { x: b.x - 3, y: b.y - 1, width: b.width + 6, height: b.height + 2, fill: css("--bg") });
@@ -503,16 +545,19 @@ cargo run --release -- --sweep   # sensitivity</code></pre>
       const pts = (arr) => [[sx(0), sy(arr[0])], ...arr.map((v, i) => [sx(i + 0.5), sy(v)])];
       const shrink = pts(d.timeline.shrink);
       svg("path", { d: smooth(shrink) + `L${shrink[shrink.length - 1][0]},${p.y1}L${p.x0},${p.y1}Z`, fill: css("--s-shrink"), "fill-opacity": css("--wash") }, s);
-      for (const k of ["simplex", "tmr", "shrink"]) {
-        const c = SERIES.find((x) => x.key === k).color;
-        svg("path", { d: smooth(pts(d.timeline[k])), fill: "none", stroke: css(c), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" }, s);
+      // The accent last, so it sits on top.
+      for (const k of ["cold", "unchecked", "simplex", "tmr", "shrink"]) {
+        const ser = SERIES.find((x) => x.key === k);
+        const attrs = { d: smooth(pts(d.timeline[k])), fill: "none", stroke: css(ser.color), "stroke-width": 2, "stroke-linejoin": "round", "stroke-linecap": "round" };
+        if (ser.dash) attrs["stroke-dasharray"] = ser.dash;
+        svg("path", attrs, s);
       }
       if (!narrow) {
         const at = (k, y) => [sx(y + 0.5), sy(d.timeline[k][y])];
         const cross = (k, lvl) => Math.max(0, d.timeline[k].findIndex((v) => v < lvl));
         let [x, y] = at("simplex", 12); text(s, x, y + 18, "standby simplex", { class: "lbl" });
         [x, y] = at("tmr", cross("tmr", 0.62)); text(s, x - 10, y + 4, "fixed TMR", { class: "lbl", "text-anchor": "end" });
-        [x, y] = at("shrink", cross("shrink", 0.55)); text(s, x + 10, y - 8, "shrinking quorum", { class: "lbl" });
+        [x, y] = at("shrink", cross("shrink", 0.55)); text(s, x + 10, y - 8, "shrinking quorum", { class: "lbl halo" });
       }
 
       const cursor = svg("g", { visibility: "hidden" }, s);
@@ -527,7 +572,7 @@ cargo run --release -- --sweep   # sensitivity</code></pre>
         SERIES.forEach((ser, i) => { dots[i].setAttribute("cx", x); dots[i].setAttribute("cy", sy(d.timeline[ser.key][y])); });
         cursor.setAttribute("visibility", "visible");
         tip.show(`<b>Year ${y}</b><br>` + SERIES.map((ser) =>
-          `<span class="k" style="background:var(${ser.color})"></span>${ser.name} <span class="n">${fmtPct(d.timeline[ser.key][y])}</span>`).join("<br>"),
+          `<span class="k" style="background:${keyBg(ser)}"></span>${ser.name} <span class="n">${fmtPct(d.timeline[ser.key][y])}</span>`).join("<br>"),
           x, sy(d.timeline.shrink[y]));
       }, Math.floor(years / 5) + 1);
     }
@@ -578,6 +623,72 @@ cargo run --release -- --sweep   # sensitivity</code></pre>
         cursor.setAttribute("visibility", "visible");
         const when = q.years === 0 ? "No ground team" : `${q.years} years of support`;
         tip.show(`<b>${when}</b><br><span class="n">${fmtX(q.ratio)}</span> the useful work<br><span class="n">95%: ${fmtX(q.lo)} to ${fmtX(q.hi)}</span>`, x, y);
+      }, pts.length);
+    }
+
+    // Cold standby by spare aging rate: the band and line of drawGround, with
+    // the shrinking quorum and standby simplex as horizontal references.
+    function drawCold(host, d) {
+      const W = host.clientWidth, narrow = W < 520;
+      const H = Math.round(Math.min(360, Math.max(230, W * 0.48)));
+      const pts = d.cold.points, a0 = pts[0].aging, a1 = pts[pts.length - 1].aging;
+      const refShrink = d.cold.shrink_vs_tmr, refSimplex = d.cold.simplex_vs_tmr;
+      const lo = Math.floor(Math.min(refSimplex, ...pts.map((q) => q.vs_tmr.lo)) * 5) / 5;
+      const hi = Math.ceil(Math.max(refShrink, ...pts.map((q) => q.vs_tmr.hi)) * 5) / 5;
+      const p = { x0: 40, x1: W - 14, y0: 10, y1: H - 40 };
+      const sx = (a) => p.x0 + (p.x1 - p.x0) * (a - a0) / (a1 - a0);
+      const sy = (v) => p.y1 - (p.y1 - p.y0) * (v - lo) / (hi - lo);
+      host.querySelector("svg")?.remove();
+      const s = svg("svg", { viewBox: `0 0 ${W} ${H}`, width: W, height: H, "aria-hidden": "true" });
+      host.prepend(s);
+      const accent = css("--s-shrink"), grey = css("--s-cold");
+
+      for (let v = lo; v <= hi + 1e-9; v += 0.2) {
+        svg("line", { class: "grid", x1: p.x0, x2: p.x1, y1: sy(v), y2: sy(v) }, s);
+        text(s, p.x0 - 6, sy(v) + 4, v.toFixed(1) + "x", { "text-anchor": "end" });
+      }
+      pts.forEach((q, i) => { if (!narrow || i % 3 === 0) text(s, sx(q.aging), p.y1 + 17, q.aging.toFixed(1), { "text-anchor": "middle" }); });
+      text(s, p.x1 + 8, H - 2, "spare aging rate", { class: "lbl", "text-anchor": "end" });
+
+      svg("line", { x1: p.x0, x2: p.x1, y1: sy(refShrink), y2: sy(refShrink), stroke: accent, "stroke-width": 2 }, s);
+      text(s, p.x1, sy(refShrink) - 8, `shrinking quorum, ${fmtX(refShrink)}`, { class: "lbl halo", "text-anchor": "end" });
+      svg("line", { x1: p.x0, x2: p.x1, y1: sy(refSimplex), y2: sy(refSimplex), stroke: grey, "stroke-width": 1 }, s);
+      text(s, p.x0 + 4, sy(refSimplex) - 8, `standby simplex, ${fmtX(refSimplex)}`, { class: "lbl halo" });
+
+      const upper = pts.map((q) => [sx(q.aging), sy(q.vs_tmr.hi)]);
+      const lower = pts.slice().reverse().map((q) => [sx(q.aging), sy(q.vs_tmr.lo)]);
+      svg("path", { d: smooth(upper) + `L${lower[0][0].toFixed(1)},${lower[0][1].toFixed(1)}` + smoothSeg(lower) + "Z", fill: grey, "fill-opacity": parseFloat(css("--wash")) + 0.06 }, s);
+      svg("path", { d: smooth(pts.map((q) => [sx(q.aging), sy(q.vs_tmr.value)])), fill: "none", stroke: grey, "stroke-width": 2, "stroke-dasharray": "2 4", "stroke-linejoin": "round", "stroke-linecap": "round" }, s);
+
+      const first = pts[0], last = pts[pts.length - 1];
+      dot(s, sx(first.aging), sy(first.vs_tmr.value), grey);
+      text(s, sx(first.aging) + 10, sy(first.vs_tmr.value) - 10, fmtX(first.vs_tmr.value), { class: "val" });
+      // The name sits above the curve near its middle, where nothing else is.
+      const mid = pts[Math.floor(pts.length / 2) - 1];
+      text(s, sx(mid.aging) + 6, sy(mid.vs_tmr.value) - 14, "cold standby", { class: "lbl halo" });
+      dot(s, sx(last.aging), sy(last.vs_tmr.value), grey);
+      text(s, sx(last.aging) - 10, sy(last.vs_tmr.value) - 10, fmtX(last.vs_tmr.value), { class: "val", "text-anchor": "end" });
+      if (d.cold.crossing !== null) {
+        const cx = sx(d.cold.crossing);
+        svg("line", { x1: cx, x2: cx, y1: p.y0, y2: p.y1, stroke: css("--ink-faint"), "stroke-width": 1 }, s);
+        // On a phone the top is taken by the first point label.
+        text(s, cx + 7, narrow ? (p.y0 + p.y1) / 2 : p.y0 + 12, narrow ? `equal at ${d.cold.crossing.toFixed(2)}` : `equal work at about ${d.cold.crossing.toFixed(2)}`, { class: "lbl halo" });
+        dot(s, cx, sy(refShrink), accent);
+      }
+
+      const cursor = svg("g", { visibility: "hidden" }, s);
+      const rule = svg("line", { y1: p.y0, y2: p.y1, stroke: css("--ink-faint"), "stroke-width": 1, "stroke-opacity": 0.6 }, cursor);
+      const cd = dot(cursor, 0, 0, grey);
+      const tip = tooltip(host);
+      interact(host, p, (f) => {
+        if (f === null) { cursor.setAttribute("visibility", "hidden"); tip.hide(); return; }
+        const q = pts[Math.round(f * (pts.length - 1))];
+        const x = sx(q.aging), y = sy(q.vs_tmr.value);
+        rule.setAttribute("x1", x); rule.setAttribute("x2", x);
+        cd.setAttribute("cx", x); cd.setAttribute("cy", y);
+        cursor.setAttribute("visibility", "visible");
+        tip.show(`<b>Spare aging ${q.aging.toFixed(1)}</b><br><span class="n">${fmtX(q.vs_tmr.value)}</span> the useful work of fixed TMR<br>` +
+          `<span class="n">${fmtX(q.vs_shrink.value)}</span> that of the shrinking quorum<br><span class="n">${fmtPct1(q.risk.value)}</span> of missions with a wrong result`, x, y);
       }, pts.length);
     }
 
@@ -668,36 +779,57 @@ cargo run --release -- --sweep   # sensitivity</code></pre>
     function tables(d) {
       const row = (cells, tag) => "<tr>" + cells.map((c) => `<${tag || "td"}>${c}</${tag || "td"}>`).join("") + "</tr>";
       const t = d.timeline;
-      let h = row(["Year", "shrinking quorum", "fixed TMR", "standby simplex"], "th");
-      for (let y = 0; y < t.shrink.length; y += 25) h += row([y, fmtPct(t.shrink[y]), fmtPct(t.tmr[y]), fmtPct(t.simplex[y])]);
+      let h = row(["Year", ...SERIES.map((ser) => ser.name)], "th");
+      for (let y = 0; y < t.shrink.length; y += 25) h += row([y, ...SERIES.map((ser) => fmtPct(t[ser.key][y]))]);
       document.getElementById("timeline-table").innerHTML = h;
 
       h = row(["Years of support", "vs TMR + ground", "95% interval"], "th");
       for (const q of d.ground.points) if (q.years % 25 === 0) h += row([q.years, fmtX(q.ratio), `${fmtX(q.lo)} to ${fmtX(q.hi)}`]);
       document.getElementById("ground-table").innerHTML = h;
 
-      h = row(["Parameter value", "work vs TMR", "wrong vs simplex"], "th");
-      for (const r of d.sweep.rows) for (const q of r.points) h += row([`${r.name}: ${q.value}`, fmtX(q.work), q.wrong === null ? "n/a" : fmtPct(q.wrong)]);
+      const ages = d.sweep.cold_agings.map((a) => a.toFixed(1));
+      h = row(["Parameter value", "work vs TMR", "wrong vs simplex", ...ages.map((a) => `work vs cold ${a}`)], "th");
+      for (const r of d.sweep.rows) for (const q of r.points) h += row([`${r.name}: ${q.value}`, fmtX(q.work), q.wrong === null ? "n/a" : fmtPct(q.wrong), ...q.cold.map(fmtX)]);
       document.getElementById("sweep-table").innerHTML = h;
 
-      h = row(["Policy", "Useful work (y)", "Service life (y)", "Wrong / mission"], "th");
-      for (const q of d.policies) h += row([q.policy, q.useful_years.toFixed(1), q.service_years.toFixed(1), q.wrong_per_mission.toFixed(3)]);
+      h = row(["Policy", "Useful work (y)", "Service life (y)", "Wrong / mission", "Risk", "Risk, 95% interval"], "th");
+      for (const q of d.policies) h += row([q.policy, q.useful_years.toFixed(1), q.service_years.toFixed(1), q.wrong_per_mission.toFixed(3), fmtPct1(q.risk.value), `${fmtPct1(q.risk.lo)} to ${fmtPct1(q.risk.hi)}`]);
       document.getElementById("policy-table").innerHTML = h;
+
+      h = row(["Spare aging", "Useful work (y)", "Service life (y)", "Wrong / mission", "Risk", "vs TMR", "vs shrinking quorum"], "th");
+      for (const q of d.cold.points) h += row([q.aging.toFixed(1), q.useful_years.toFixed(1), q.service_years.toFixed(1), q.wrong_per_mission.toFixed(3), fmtPct1(q.risk.value), fmtX(q.vs_tmr.value), fmtX(q.vs_shrink.value)]);
+      document.getElementById("cold-table").innerHTML = h;
     }
 
+    // The headline strings come from data.json's display object: the same
+    // Rust formats as the command line, and the same strings as the README.
     function fill(d) {
-      const h = d.headline;
+      const t = d.display;
       const set = (k, v) => document.querySelectorAll(`[data-k="${k}"]`).forEach((e) => { e.textContent = v; });
       set("runs", d.runs.toLocaleString("en-US"));
       set("sweep-runs", d.sweep_runs.toLocaleString("en-US"));
-      set("work", fmtX(h.work_vs_tmr.value));
-      set("work-ci", `95%: ${fmtX(h.work_vs_tmr.lo)} to ${fmtX(h.work_vs_tmr.hi)}`);
-      set("fewer", fmtPct(1 - h.wrong_vs_simplex.value));
-      set("fewer-ci", `95%: ${fmtPct(1 - h.wrong_vs_simplex.hi)} to ${fmtPct(1 - h.wrong_vs_simplex.lo)}`);
-      set("be", Math.round(h.break_even_years.value) + " y");
-      set("be-ci", `95%: ${Math.round(h.break_even_years.lo)} to ${Math.round(h.break_even_years.hi)} years`);
+      set("work", t.work_vs_tmr);
+      set("work-ci", `95%: ${t.work_vs_tmr_ci}`);
+      set("fewer", t.fewer_vs_simplex);
+      set("fewer-ci", `95%: ${t.fewer_vs_simplex_ci}`);
+      set("risk", t.risk_shrink);
+      set("risk-ci", `95%: ${t.risk_shrink_ci}`);
+      set("risk-tmr", t.risk_tmr);
+      set("be", t.break_even + " y");
+      set("be-ci", `95%: ${t.break_even_ci} years`);
       set("voyager-years", d.ground.voyager_years);
-      set("voyager", fmtX(interp(d.ground.points, d.ground.voyager_years)));
+      set("voyager", t.voyager);
+      set("cold-aging", d.timeline.cold_aging.toFixed(1));
+      set("work-vs-unchecked", t.work_vs_unchecked);
+      set("wrong-vs-unchecked", t.wrong_vs_unchecked);
+      if (d.cold.crossing !== null) set("cold-crossing", d.cold.crossing.toFixed(2));
+      set("work-vs-cold-01", t.work_vs_cold_01);
+      set("work-vs-cold-10", t.work_vs_cold_10);
+      set("risk-cold-01", t.risk_cold_01);
+      set("risk-cold-10", t.risk_cold_10);
+      set("risk-shrink", t.risk_shrink);
+      set("nodes2-01", t.nodes2_work_vs_cold_01);
+      set("nodes2-10", t.nodes2_work_vs_cold_10);
     }
 
     fetch("data.json").then((r) => r.json()).then((d) => {
@@ -706,6 +838,7 @@ cargo run --release -- --sweep   # sensitivity</code></pre>
       const charts = [
         [document.getElementById("timeline"), (h) => drawTimeline(h, d)],
         [document.getElementById("ground"), (h) => drawGround(h, d)],
+        [document.getElementById("cold-aging"), (h) => drawCold(h, d)],
         [document.getElementById("sweep-work"), (h) => drawSweep(h, d, "work")],
         [document.getElementById("sweep-wrong"), (h) => drawSweep(h, d, "wrong")],
       ];
