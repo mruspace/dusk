@@ -178,6 +178,8 @@
 
     .byline { margin: .75rem 0 0; font-size: .95rem; color: var(--ink-faint); }
     .byline a { color: var(--ink-soft); }
+    .note { margin: 1rem 0 0; padding-left: .75rem; border-left: 2px solid var(--accent); font-size: .95rem; color: var(--ink-soft); }
+    .note a { color: var(--ink); }
     sup.cite { font-size: .68em; line-height: 0; margin-left: .08em; }
     sup.cite a { color: var(--accent); text-decoration: none; }
     sup.cite a:hover { text-decoration: underline; }
@@ -241,6 +243,7 @@
         <h1>dusk</h1>
         <p class="tagline">What a shrinking quorum buys on hardware that only ever decays</p>
         <p class="byline">Will Binns &middot; September 2026 &middot; companion to the <a href="https://doi.org/10.5281/zenodo.23305299">Mru whitepaper</a></p>
+        <p class="note">The quorum program this model studies <a href="https://mru.space/research/flight-orbit/">ran in orbit</a> on 18 October 2026. That run checks the program, not this model.</p>
       </header>
 
       <p class="lede">Classic triple modular redundancy<sup class="cite"><a href="#ref-1">1</a>,<a href="#ref-2">2</a>,<a href="#ref-3">3</a></sup> has a fixed threshold. Three processors vote, two can still detect a disagreement, and one cannot outvote anything, so the system stops. With no repairs and no ground team in reach, that throws away the last processor's whole remaining life.</p>
