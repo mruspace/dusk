@@ -368,6 +368,7 @@
         <li>Two or more upsets in a vote are always caught as a split, which slightly flatters every voting policy equally.</li>
         <li>The cold spare aging rate is a sweep, not a measured value. Cold standby keeps the correlated deaths of the powered history, so it slightly under-correlates.</li>
       </ul>
+      <p>The same quorum program (v0.3.1) ran in orbit on ESA's OPS-SAT PRETTY on 18 October 2026, three software replicas on one payload processor with faults from a schedule (<a href="https://github.com/mruspace/flight/blob/main/docs/opssat.md">results</a>). That checks the program on a flight processor, not this model. The 1.34x figure comes from the 10,000 simulated missions here, not from that run, and with no real upset in its 227 s window the run calibrates nothing in this model.</p>
 
       <h2>Run it yourself</h2>
       <p>Rust, no dependencies. Results depend only on the seed, and every number on this page comes from the same seeds.</p>
