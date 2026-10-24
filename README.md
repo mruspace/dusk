@@ -414,19 +414,20 @@ simplex and cold standby, are checked by unit tests only.
 This checks the **policy model** against the code. It does not calibrate the
 **environment**: the bench sets the upset rate and the failure times itself,
 so it cannot measure them. Those need radiation test data or a much longer
-flight record; the 227 s OPS-SAT run of 18 October 2026 saw no real upset. The
+flight record; the OPS-SAT runs of 18 and 22 October 2026 (227 s and 136 s)
+saw no real upset. The
 bench also has faults the model does not: a replica that is stuck on a wrong
 value. On one replica, such a fault gives wrong results until the next
 known-answer test. The model has only processors that die.
 
-The same quorum program (v0.3.1) ran in orbit on ESA's OPS-SAT PRETTY on 18
-October 2026, three software replicas on one payload processor with faults
-from a schedule
+The same quorum program ran in orbit on ESA's OPS-SAT PRETTY on 18 October
+2026 (v0.3.1) and 22 October 2026 (v0.4.0), three software replicas on one
+payload processor with faults from a schedule
 ([results](https://github.com/mruspace/flight/blob/main/docs/opssat.md)).
 That checks the program on a flight processor, not this model. The 1.34x
-figure comes from the 10,000 simulated missions here, not from that run, and
-with no real upset in its 227 s window the run calibrates nothing in this
-model.
+figure comes from the 10,000 simulated missions here, not from those runs,
+and with no real upset in their 227 s and 136 s windows the runs calibrate
+nothing in this model.
 
 ## What this does not claim
 
