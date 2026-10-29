@@ -415,14 +415,16 @@ This checks the **policy model** against the code. It does not calibrate the
 **environment**: the bench sets the upset rate and the failure times itself,
 so it cannot measure them. Those need radiation test data or a much longer
 flight record; the OPS-SAT runs of October 18 and 22, 2026 (227 s and 136 s)
-saw no real upset. The
+saw no real upset, and the run of October 28 had no upset sensor. The
 bench also has faults the model does not: a replica that is stuck on a wrong
 value. On one replica, such a fault gives wrong results until the next
 known-answer test. The model has only processors that die.
 
 The same quorum program ran in orbit on ESA's OPS-SAT PRETTY on October 18,
 2026 (v0.3.1) and October 22, 2026 (v0.4.0), three software replicas on one
-payload processor with faults from a schedule
+payload processor with faults from a schedule. On October 28, 2026, the same
+decision core ran there as an F´ deployment (v0.7.0), each replica a process
+of its own, with a real process kill
 ([results](https://github.com/mruspace/flight/blob/main/docs/opssat.md)).
 That checks the program on a flight processor, not this model. The 1.34x
 figure comes from the 10,000 simulated missions here, not from those runs,

@@ -243,7 +243,7 @@
         <h1>dusk</h1>
         <p class="tagline">What a shrinking quorum buys on hardware that only ever decays</p>
         <p class="byline">Will Binns &middot; September 2026 &middot; companion to the <a href="https://doi.org/10.5281/zenodo.23305299">Mru whitepaper</a></p>
-        <p class="note">The quorum program this model studies <a href="https://mru.space/research/flight-orbit/">ran in orbit</a> on October 18, 2026, and <a href="https://mru.space/research/flight-orbit-2/">again</a> on October 22 Those runs check the program, not this model.</p>
+        <p class="note">The quorum program this model studies <a href="https://mru.space/research/flight-orbit/">ran in orbit</a> on October 18, 2026, and <a href="https://mru.space/research/flight-orbit-2/">again</a> on October 22, and the same decision core, as an F´ deployment, <a href="https://mru.space/research/flight-orbit-3/">ran there</a> on October 28. Those runs check the program, not this model.</p>
       </header>
 
       <p class="lede">Classic triple modular redundancy<sup class="cite"><a href="#ref-1">1</a>,<a href="#ref-2">2</a>,<a href="#ref-3">3</a></sup> has a fixed threshold. Three processors vote, two can still detect a disagreement, and one cannot outvote anything, so the system stops. With no repairs and no ground team in reach, that throws away the last processor's whole remaining life.</p>
@@ -371,7 +371,7 @@
         <li>Two or more upsets in a vote are always caught as a split, which slightly flatters every voting policy equally.</li>
         <li>The cold spare aging rate is a sweep, not a measured value. Cold standby keeps the correlated deaths of the powered history, so it slightly under-correlates.</li>
       </ul>
-      <p>The same quorum program ran in orbit on ESA's OPS-SAT PRETTY on October 18, 2026 (v0.3.1) and October 22, 2026 (v0.4.0), three software replicas on one payload processor with faults from a schedule (<a href="https://github.com/mruspace/flight/blob/main/docs/opssat.md">results</a>). That checks the program on a flight processor, not this model. The 1.34x figure comes from the 10,000 simulated missions here, not from those runs, and with no real upset in their 227 s and 136 s windows the runs calibrate nothing in this model.</p>
+      <p>The same quorum program ran in orbit on ESA's OPS-SAT PRETTY on October 18, 2026 (v0.3.1) and October 22, 2026 (v0.4.0), three software replicas on one payload processor with faults from a schedule. On October 28, 2026, the same decision core ran there as an F´ deployment (v0.7.0), each replica a process of its own, with a real process kill (<a href="https://github.com/mruspace/flight/blob/main/docs/opssat.md">results</a>). That checks the program on a flight processor, not this model. The 1.34x figure comes from the 10,000 simulated missions here, not from those runs, and with no real upset in their 227 s and 136 s windows (the October 28 run had no upset sensor) the runs calibrate nothing in this model.</p>
 
       <h2>Run it yourself</h2>
       <p>Rust, no dependencies. Results depend only on the seed, and every number on this page comes from the same seeds.</p>
